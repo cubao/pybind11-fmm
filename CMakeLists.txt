@@ -5,8 +5,9 @@ project(
   VERSION ${SKBUILD_PROJECT_VERSION}
   LANGUAGES CXX)
 
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 # set(CMAKE_BUILD_TYPE "Debug")
 if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
@@ -28,7 +29,8 @@ endif()
 find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 find_package(pybind11 CONFIG REQUIRED)
 
-python_add_library(_core MODULE src/main.cpp WITH_SOABI)
+file(GLOB SRCS src/*.cpp)
+python_add_library(_core MODULE ${SRCS} WITH_SOABI)
 target_link_libraries(_core PRIVATE pybind11::headers)
 target_include_directories(_core PRIVATE src/3rdparty)
 
