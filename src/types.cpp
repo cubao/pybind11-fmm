@@ -101,14 +101,14 @@ std::tuple<Eigen::Vector2d, double, int, double> Polyline::nearest(const Eigen::
     if (seg_min > seg_max) {
         return std::make_tuple(PP, dd, ss, tt);
     }
-    Eigen::Vector3d xyz = pos;
+    Eigen::Vector2d xy = pos;
     if (is_wgs84_) {
-        xyz -= coords_.row(0);
-        xyz.array() *= k_.array();
+        xy -= coords_.row(0);
+        xy.array() *= k_.array();
     }
     auto &segments = cache().segments_;
     for (int s = seg_min; s <= seg_max; ++s) {
-        auto [P, d, t] = segments[s].nearest(xyz);
+        auto [P, d, t] = segments[s].nearest(xy);
         if (d < dd) {
             PP = P;
             dd = d;
@@ -143,10 +143,10 @@ std::tuple<Eigen::Vector2d, double, int, double> Polyline::nearest(const Eigen::
     if (seg_min > seg_max) {
         return std::make_tuple(PP, dd, ss, tt);
     }
-    Eigen::Vector3d xyz = pos;
+    Eigen::Vector2d xy = pos;
     if (is_wgs84_) {
-        xyz -= coords_.row(0);
-        xyz.array() *= k_.array();
+        xy -= coords_.row(0);
+        xy.array() *= k_.array();
     }
     double min_dot = std::cos(max_angle_offset * M_PI / 180.0);
     auto &segments = cache().segments_;
@@ -154,7 +154,7 @@ std::tuple<Eigen::Vector2d, double, int, double> Polyline::nearest(const Eigen::
         if (dir.dot(segments[s].dir) < min_dot) {
             continue;
         }
-        auto [P, d, t] = segments[s].nearest(xyz);
+        auto [P, d, t] = segments[s].nearest(xy);
         if (d < dd) {
             PP = P;
             dd = d;
@@ -171,10 +171,10 @@ std::tuple<Eigen::Vector2d, double, int, double> Polyline::nearest(const Eigen::
 
 void __norms_dirs(const RowVectors &polyline, int N, Eigen::VectorXd &norms, RowVectors &dirs) {
     constexpr double eps = std::numeric_limits<double>::min();
-    dirs = polyline.bottomRows(N - 1) - polyline.topRows(N - 1);
-    Eigen::VectorXd norms = dirs.rowwise().norm();
+    dirs = polyline.bottomRows(N - 1) - polyline.topRows(N - 1);  // deltas
+    norms = dirs.rowwise().norm();
 
-    // dirs /= len(dir)
+    // dirs = delta / len(delta)
     for (int i = 0; i < N - 1; ++i) {
         if (norms[i]) {
             dirs.row(i) /= norms[i];
