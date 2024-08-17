@@ -9,6 +9,7 @@ inline Eigen::VectorXi douglas_simplify_iter(const Eigen::Ref<const RowVectors> 
     to_keep.setZero();
     std::queue<std::pair<int, int>> q;
     q.push({0, to_keep.size() - 1});
+    double eps2 = epsilon * epsilon;
     while (!q.empty()) {
         int i = q.front().first;
         int j = q.front().second;
@@ -27,7 +28,7 @@ inline Eigen::VectorXi douglas_simplify_iter(const Eigen::Ref<const RowVectors> 
                 max_index = k;
             }
         }
-        if (max_dist2 <= epsilon * epsilon) {
+        if (max_dist2 <= eps2) {
             continue;
         }
         q.push({i, max_index});

@@ -12,6 +12,7 @@ struct Sinks {
     // you stop at (on) sinks, no passing through
     const DiGraph *graph{nullptr};
     unordered_set<int64_t> nodes;
+    unordered_map<int64_t, std::vector<int64_t>> links;
 };
 
 using Binding = std::tuple<double, double, std::any>;  // start, end, data
@@ -19,6 +20,7 @@ struct Bindings {
     // you stop at first hit of bindings
     const DiGraph *graph{nullptr};
     unordered_map<int64_t, std::vector<Binding>> node2bindings;  // assume sorted
+    void sort();
 };
 
 struct Sequences {
@@ -39,16 +41,58 @@ struct Path {
     std::optional<double> start_offset;
     std::optional<double> end_offset;
     std::optional<std::tuple<int64_t, Binding>> binding;
+};
 
-    void round(double scale) {
-        dist = ROUND(dist, scale);
-        if (start_offset) {
-            start_offset = ROUND(*start_offset, scale);
-        }
-        if (end_offset) {
-            end_offset = ROUND(*end_offset, scale);
-        }
+struct ZigzagPath : Path
+{
+    // two-way routing on a DiGraph
+    ZigzagPath() = default;
+    ZigzagPath(const DiGraph *graph, double dist,
+               const std::vector<int64_t> &nodes,
+               const std::vector<int> &directions)
+        : Path(graph, dist, nodes), directions(directions)
+    {
     }
+    std::vector<int> directions;
+};
+
+struct ShortestPathGenerator
+{
+    const DiGraph *graph{nullptr};
+    unordered_map<int64_t, int64_t> prevs;
+    unordered_map<int64_t, double> dists;
+
+    using Click = std::tuple<int64_t, std::optional<double>>;
+    double cutoff{0.0};
+    std::optional<Click> source;
+    std::optional<Click> target;
+    bool ready() const {
+        return graph && cutoff > 0 && ((bool)source ^ (bool)target);
+    }
+};
+
+struct ZigzagPathGenerator
+{
+    using State = std::tuple<int64_t, int>;
+    ZigzagPathGenerator() = default;
+    ZigzagPathGenerator(const DiGraph *graph, double cutoff)
+        : graph(graph), cutoff(cutoff)
+    {
+    }
+
+    const DiGraph *graph{nullptr};
+    double cutoff{0.0};
+    std::optional<int64_t> source;
+    unordered_map<State, State> prevs;
+    unordered_map<State, double> dists;
+
+    bool ready() const { return graph && cutoff > 0 && source; }
+
+    static std::optional<ZigzagPath>
+    Path(const State &state, const int64_t source, //
+         const DiGraph *self,                      //
+         const unordered_map<State, State> &pmap,
+         const unordered_map<State, double> &dmap);
 };
 
 }  // namespace cubao
