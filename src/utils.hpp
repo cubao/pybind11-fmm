@@ -2,10 +2,6 @@
 
 #include "types.hpp"
 
-// round to 10cm
-#define __ROUND__(x) cubao::ROUND(x, 10)
-// #define __ROUND__(x) x
-
 namespace cubao {
 
 inline double ROUND(double v, double s) {
