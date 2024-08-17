@@ -26,12 +26,12 @@ inline Eigen::Vector2d cheap_ruler_k(double latitude) {
     double coslat = std::cos(latitude * RAD);
     double w2 = 1.0 / (1.0 - E2 * (1.0 - coslat * coslat));
     double w = std::sqrt(w2);
-    return Eigen::Vector3d(MUL * w * coslat, MUL * w * w2 * (1.0 - E2));
+    return Eigen::Vector2d(MUL * w * coslat, MUL * w * w2 * (1.0 - E2));
 }
 
 inline RowVectors wgs84_to_xy(const Eigen::Ref<const RowVectors> &wgs84,   //
-                              std::optional<Eigen::Vector3d> anchor = {},  //
-                              std::optional<Eigen::Vector3d> k = {}) {
+                              std::optional<Eigen::Vector2d> anchor = {},  //
+                              std::optional<Eigen::Vector2d> k = {}) {
     if (!anchor) {
         anchor = wgs84.row(0);
     }
@@ -47,8 +47,8 @@ inline RowVectors wgs84_to_xy(const Eigen::Ref<const RowVectors> &wgs84,   //
 }
 
 inline RowVectors xys_to_wgs84(const Eigen::Ref<const RowVectors> &xys,  //
-                               const Eigen::Vector3d &anchor,            //
-                               std::optional<Eigen::Vector3d> k = {}) {
+                               const Eigen::Vector2d &anchor,            //
+                               std::optional<Eigen::Vector2d> k = {}) {
     if (!k) {
         k = cheap_ruler_k(anchor[1]);
     }

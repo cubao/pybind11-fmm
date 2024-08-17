@@ -1,8 +1,10 @@
 #pragma once
 
 #include <Eigen/Core>
+#include <map>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "ankerl/unordered_dense.h"
 
@@ -130,7 +132,7 @@ struct LineSegment {
         return (A + dot * dir - P).squaredNorm();
     }
 
-    std::tuple<Eigen::Vector3d, double, double> nearest(const Eigen::Vector2d &P) const {
+    std::tuple<Eigen::Vector2d, double, double> nearest(const Eigen::Vector2d &P) const {
         double dot = (P - A).dot(dir);
         if (dot <= 0) {
             return std::make_tuple(A, (P - A).norm(), 0.0);
