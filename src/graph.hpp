@@ -6,7 +6,7 @@
 
 // https://github.com/cubao/networkx-graph/blob/b2ea16cd66dc77b4643a1a059c2496d44fef4532/src/main.cpp
 namespace cubao {
-struct DiGraph {};
+struct DiGraph;
 
 struct Sinks {
     // you stop at (on) sinks, no passing through
@@ -81,5 +81,41 @@ struct ZigzagPathGenerator {
                                           const unordered_map<State, State> &pmap,
                                           const unordered_map<State, double> &dmap);
 };
+
+// https://github.com/cubao/nano-fmm/blob/master/src/nano_fmm/network/ubodt.hpp
+struct UbodtRecord {
+    UbodtRecord() {}
+    UbodtRecord(int64_t source_road, int64_t target_road,  //
+                int64_t source_next, int64_t target_prev,  //
+                double cost)
+        : source_road(source_road),
+          target_road(target_road),  //
+          source_next(source_next),
+          target_prev(target_prev),  //
+          cost(cost) {}
+
+    bool operator<(const UbodtRecord &rhs) const {
+        if (source_road != rhs.source_road) {
+            return source_road < rhs.source_road;
+        }
+        if (cost != rhs.cost) {
+            return cost < rhs.cost;
+        }
+        return std::make_tuple(source_next, target_prev, target_road) <
+               std::make_tuple(rhs.source_next, rhs.target_prev, rhs.target_road);
+    }
+    bool operator==(const UbodtRecord &rhs) const {
+        return source_road == rhs.source_road && target_road == rhs.target_road && source_next == rhs.source_next &&
+               target_prev == rhs.target_prev && cost == rhs.cost;
+    }
+
+    int64_t source_road{0};
+    int64_t target_road{0};
+    int64_t source_next{0};
+    int64_t target_prev{0};
+    double cost{0.0};
+};
+
+struct DiGraph {};
 
 }  // namespace cubao
