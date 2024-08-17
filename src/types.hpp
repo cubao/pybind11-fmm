@@ -1,17 +1,26 @@
 #pragma once
 
+#include <Eigen/Core>
 #include <optional>
 #include <string>
+
 #include "ankerl/unordered_dense.h"
 
+#define _USE_MATH_DEFINES
+#include <cmath>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 namespace cubao {
-template <typename Key, typename Value,
-          typename Hash = ankerl::unordered_dense::hash<Key>,
+template <typename Key, typename Value, typename Hash = ankerl::unordered_dense::hash<Key>,
           typename Equal = std::equal_to<Key>>
 using unordered_map = ankerl::unordered_dense::map<Key, Value, Hash, Equal>;
-template <typename Value, typename Hash = ankerl::unordered_dense::hash<Value>,
-          typename Equal = std::equal_to<Value>>
+template <typename Value, typename Hash = ankerl::unordered_dense::hash<Value>, typename Equal = std::equal_to<Value>>
 using unordered_set = ankerl::unordered_dense::set<Value, Hash, Equal>;
+
+// 2D
+using RowVectors = Eigen::Matrix<double, Eigen::Dynamic, 2, Eigen::RowMajor>;
 
 struct Indexer {
     Indexer() = default;
@@ -97,24 +106,17 @@ struct Indexer {
     int64_t id_cursor_{1000000};
 };
 
-struct LineSegment
-{
+struct LineSegment {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     const Eigen::Vector2d A, B, dir;
     const double len;
     LineSegment(const Eigen::Vector2d &a, const Eigen::Vector2d &b)
-        : A(a), B(b), dir((b - a).normalized()), len((b - a).norm())
-    {
-    }
-    LineSegment(const Eigen::Vector2d &a, const Eigen::Vector2d &b,
-                const Eigen::Vector2d &dir, double length)
-        : A(a), B(b), dir(dir), len(length)
-    {
-    }
+        : A(a), B(b), dir((b - a).normalized()), len((b - a).norm()) {}
+    LineSegment(const Eigen::Vector2d &a, const Eigen::Vector2d &b, const Eigen::Vector2d &dir, double length)
+        : A(a), B(b), dir(dir), len(length) {}
 
     double dist(const Eigen::Vector2d &P) const { return std::sqrt(dist2(P)); }
-    double dist2(const Eigen::Vector2d &P) const
-    {
+    double dist2(const Eigen::Vector2d &P) const {
         double dot = (P - A).dot(dir);
         if (dot <= 0) {
             return (P - A).squaredNorm();
@@ -124,9 +126,7 @@ struct LineSegment
         return (A + dot * dir - P).squaredNorm();
     }
 
-    std::tuple<Eigen::Vector3d, double, double>
-    nearest(const Eigen::Vector2d &P) const
-    {
+    std::tuple<Eigen::Vector3d, double, double> nearest(const Eigen::Vector2d &P) const {
         double dot = (P - A).dot(dir);
         if (dot <= 0) {
             return std::make_tuple(A, (P - A).norm(), 0.0);
@@ -137,6 +137,5 @@ struct LineSegment
         return std::make_tuple(PP, (PP - P).norm(), dot / len);
     }
 };
-
 
 }  // namespace cubao

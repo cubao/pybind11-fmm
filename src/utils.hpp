@@ -1,0 +1,54 @@
+#pragma once
+
+#include "types.hpp"
+
+namespace cubao {
+// https://github.com/cubao/headers/blob/main/include/cubao/crs_transform.hpp
+inline Eigen::Vector2d cheap_ruler_k(double latitude) {
+    // based on https://github.com/mapbox/cheap-ruler-cpp
+    static constexpr double RE = 6378.137;
+    static constexpr double FE = 1.0 / 298.257223563;
+    static constexpr double E2 = FE * (2.0 - FE);
+    static constexpr double RAD = M_PI / 180.0;
+    static constexpr double MUL = RAD * RE * 1000.0;
+    double coslat = std::cos(latitude * RAD);
+    double w2 = 1.0 / (1.0 - E2 * (1.0 - coslat * coslat));
+    double w = std::sqrt(w2);
+    return Eigen::Vector3d(MUL * w * coslat, MUL * w * w2 * (1.0 - E2));
+}
+
+inline RowVectors wgs84_to_xy(const Eigen::Ref<const RowVectors> &wgs84, std::optional<Eigen::Vector3d> anchor = {},
+                              std::optional<Eigen::Vector3d> k = {}) {
+    if (!anchor) {
+        anchor = wgs84.row(0);
+    }
+    if (!k) {
+        k = cheap_ruler_k((*anchor)[1]);
+    }
+    RowVectors xys = wgs84;
+    for (int i = 0; i < 2; ++i) {
+        xys.col(i).array() -= (*anchor)[i];
+        xys.col(i).array() *= (*k)[i];
+    }
+    return xys;
+}
+
+inline RowVectors xys_to_wgs84(const Eigen::Ref<const RowVectors> &xys, const Eigen::Vector3d &anchor,
+                               std::optional<Eigen::Vector3d> k = {}) {
+    if (!k) {
+        k = cheap_ruler_k(anchor[1]);
+    }
+    RowVectors wgs84 = xys;
+    for (int i = 0; i < 2; ++i) {
+        wgs84.col(i).array() /= (*k)[i];
+        wgs84.col(i).array() += anchor[i];
+    }
+    return wgs84;
+}
+
+inline Eigen::Vector2d heading_direction(double heading) {
+    double yaw = (90.0 - heading) / 180.0 * M_PI;
+    return Eigen::Vector2d(std::cos(yaw), std::sin(yaw));
+}
+
+}  // namespace cubao
