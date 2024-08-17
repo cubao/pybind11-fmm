@@ -169,15 +169,10 @@ std::tuple<Eigen::Vector2d, double, int, double> Polyline::nearest(const Eigen::
     return {PP, dd, ss, tt};
 }
 
-void __offsets_dirs(const RowVectors &polyline, int N, Eigen::VectorXd &offs, RowVectors &dirs) {
+void __norms_dirs(const RowVectors &polyline, int N, Eigen::VectorXd &norms, RowVectors &dirs) {
     constexpr double eps = std::numeric_limits<double>::min();
     dirs = polyline.bottomRows(N - 1) - polyline.topRows(N - 1);
     Eigen::VectorXd norms = dirs.rowwise().norm();
-    offs = Eigen::VectorXd(N);
-    offs[0] = 0.0;
-    for (int i = 1; i < N; ++i) {
-        offs[i] = offs[i - 1] + norms[i - 1];
-    }
 
     // dirs /= len(dir)
     for (int i = 0; i < N - 1; ++i) {
@@ -211,8 +206,31 @@ const Polyline::Cache &Polyline::cache() const {
         return *cache_;
     }
     Cache cache;
+    Eigen::VectorXd norms;
+    auto &dirs = cache.dirs_;
+    auto &segs = cache.segments_;
+    segs.reserve(N_ - 1);
     if (is_wgs84_) {
+        auto xys = wgs84_to_xy(coords_, coords_.row(0), k_);
+        __norms_dirs(xys, N_, norms, dirs);
+        for (int i = 1; i < N_; ++i) {
+            segs.emplace_back(xys.row(i - 1), xys.row(i),  //
+                              dirs.row(i - 1),             //
+                              norms[i - 1]);
+        }
     } else {
+        __norms_dirs(coords_, N_, norms, dirs);
+        for (int i = 1; i < N_; ++i) {
+            segs.emplace_back(coords_.row(i - 1), coords_.row(i),  //
+                              dirs.row(i - 1),                     //
+                              norms[i - 1]);
+        }
+    }
+    auto &offs = cache.offsets_;
+    offs = Eigen::VectorXd(N_);
+    offs[0] = 0.0;
+    for (int i = 1; i < N_; ++i) {
+        offs[i] = offs[i - 1] + norms[i - 1];
     }
     cache_ = std::move(cache);
     return *cache_;
