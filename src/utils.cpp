@@ -64,4 +64,46 @@ RowVectors douglas_simplify(const Eigen::Ref<const RowVectors> &coords, double e
     }
     return select_by_mask(coords, douglas_simplify_mask(coords, epsilon, is_wgs84));
 }
+
+std::string encode_polyline(const Eigen::Ref<const RowVectors> &coords) { return "TODO"; }
+
+RowVectors decode_polyline(const std::string &encoded) {
+    // https://valhalla.github.io/valhalla/decoding/#c-11
+    constexpr double kPolylinePrecision = 1E6;
+    constexpr double kInvPolylinePrecision = 1.0 / kPolylinePrecision;
+    size_t i = 0;  // what byte are we looking at
+
+    // Handy lambda to turn a few bytes of an encoded string into an integer
+    auto deserialize = [&encoded, &i](const int previous) {
+        // Grab each 5 bits and mask it in where it belongs using the shift
+        int byte, shift = 0, result = 0;
+        do {
+            byte = static_cast<int>(encoded[i++]) - 63;
+            result |= (byte & 0x1f) << shift;
+            shift += 5;
+        } while (byte >= 0x20);
+        // Undo the left shift from above or the bit flipping and add to previous
+        // since its an offset
+        return previous + (result & 1 ? ~(result >> 1) : (result >> 1));
+    };
+
+    // Iterate over all characters in the encoded string
+    std::vector<std::array<double, 2>> shape;
+    int last_lon = 0, last_lat = 0;
+    while (i < encoded.length()) {
+        // Decode the coordinates, lat first for some reason
+        int lat = deserialize(last_lat);
+        int lon = deserialize(last_lon);
+
+        // Shift the decimal point 5 places to the left
+        shape.push_back({static_cast<double>(lon) * kInvPolylinePrecision,
+                           static_cast<double>(lat) * kInvPolylinePrecision});
+
+        // Remember the last one we encountered
+        last_lon = lon;
+        last_lat = lat;
+    }
+    return Eigen::Map<const RowVectors>(&shape[0][0], shape.size(), 2);
+}
+
 }  // namespace cubao
