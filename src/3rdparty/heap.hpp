@@ -46,6 +46,8 @@
 #include <iostream>
 #include <limits>
 
+#include "ankerl/unordered_dense.h"
+
 namespace cubao {
 template <class T, class Comp = std::less<T>>
 class FibHeap {
@@ -536,6 +538,10 @@ struct HeapNode {
     }
 };
 
+template <typename Key, typename Value, typename Hash = ankerl::unordered_dense::hash<Key>,
+          typename Equal = std::equal_to<Key>>
+using KV = ankerl::unordered_dense::map<Key, Value, Hash, Equal>;
+
 template <typename T = int64_t>
 struct Heap {
     inline void push(T index, double value) {
@@ -556,6 +562,6 @@ struct Heap {
   private:
     FibHeap<HeapNode<T>> heap;
     typedef typename FibHeap<HeapNode<T>>::FibNode *HeapNodeHandle;
-    unordered_map<T, HeapNodeHandle> handle_data;
+    KV<T, HeapNodeHandle> handle_data;
 };
 }  // namespace cubao

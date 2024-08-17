@@ -34,6 +34,7 @@ inline Eigen::VectorXi douglas_simplify_iter(const Eigen::Ref<const RowVectors> 
         q.push({i, max_index});
         q.push({max_index, j});
     }
+    return to_keep;
 }
 
 inline Eigen::VectorXi douglas_simplify_mask(const Eigen::Ref<const RowVectors> &coords,

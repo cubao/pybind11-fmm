@@ -32,6 +32,7 @@ static void single_source_dijkstra(unordered_map<int64_t, int64_t> &pmap,       
                                    double init_offset = 0.0) {
     // https://github.com/cyang-kth/fmm/blob/5cccc608903877b62969e41a58b60197a37a5c01/src/network/network_graph.cpp#L234-L274
     // https://github.com/cubao/nano-fmm/blob/37d2979503f03d0a2759fc5f110e2b812d963014/src/nano_fmm/network.cpp#L449C67-L449C72
+    /*
     if (cutoff < init_offset) {
         return;
     }
@@ -86,6 +87,7 @@ static void single_source_dijkstra(unordered_map<int64_t, int64_t> &pmap,       
         }
     }
     dmap.erase(start);
+    */
 }
 
 void Bindings::sort() {
@@ -276,8 +278,8 @@ Sequences DiGraph::encode_sequences(const std::vector<std::vector<std::string>> 
     return ret;
 }
 
-Endpoints DiGraph::encode_endpoints(
-    const std::unordered_map<std::string, std::tuple<Eigen::Vector2d, Eigen::Vector2d>> &endpoints, bool is_wgs84) {
+Endpoints DiGraph::encode_endpoints(const std::unordered_map<std::string, std::tuple<Endpoint, Endpoint>> &endpoints,
+                                    bool is_wgs84) {
     Endpoints ret;
     ret.graph = this;
     ret.is_wgs84 = is_wgs84;
@@ -406,7 +408,7 @@ std::optional<Path> DiGraph::shortest_path(const std::string &source,           
 std::optional<ZigzagPath> DiGraph::shortest_zigzag_path(const std::string &source,                 //
                                                         const std::optional<std::string> &target,  //
                                                         double cutoff,                             //
-                                                        int direction = 0,                         //
+                                                        int direction,                             //
                                                         ZigzagPathGenerator *generator) const {
     if (cutoff < 0) {
         return {};
@@ -433,7 +435,8 @@ std::optional<ZigzagPath> DiGraph::shortest_zigzag_path(const std::string &sourc
     return path;
 }
 
-std::vector<Path> DiGraph::all_paths_from(const std::string &source, double cutoff, std::optional<double> offset = {},
+std::vector<Path> DiGraph::all_paths_from(const std::string &source, double cutoff,  //
+                                          std::optional<double> offset,              //
                                           const Sinks *sinks) const {
     if (cutoff < 0) {
         return {};
@@ -454,7 +457,8 @@ std::vector<Path> DiGraph::all_paths_from(const std::string &source, double cuto
     return paths;
 }
 
-std::vector<Path> DiGraph::all_paths_to(const std::string &target, double cutoff, std::optional<double> offset = {},
+std::vector<Path> DiGraph::all_paths_to(const std::string &target, double cutoff,  //
+                                        std::optional<double> offset,              //
                                         const Sinks *sinks) const {
     if (cutoff < 0) {
         return {};
@@ -497,7 +501,8 @@ std::vector<Path> DiGraph::all_paths(const std::string &source,            //
                                      const std::string &target,            //
                                      double cutoff,                        //
                                      std::optional<double> source_offset,  //
-                                     std::optional<double> target_offset, const Sinks *sinks) const {
+                                     std::optional<double> target_offset,  //
+                                     const Sinks *sinks) const {
     if (cutoff < 0) {
         return {};
     }
@@ -610,17 +615,16 @@ DiGraph::Cache &DiGraph::cache() const {
     if (cache_) {
         return *cache_;
     }
-    cache_ = Cache();
+    auto cache = Cache();
     for (auto &pair : nodes_) {
-        cache_->nodes.emplace(indexer_.id(pair.first), const_cast<Node *>(&pair.second));
+        cache.nodes.emplace(indexer_.id(pair.first), const_cast<Node *>(&pair.second));
     }
     for (auto &pair : edges_) {
-        cache_->edges.emplace(
-            std::make_tuple(indexer_.id(std::get<0>(pair.first)), indexer_.id(std::get<1>(pair.first))),
-            const_cast<Edge *>(&pair.second));
+        cache.edges.emplace(std::make_tuple(indexer_.id(std::get<0>(pair.first)), indexer_.id(std::get<1>(pair.first))),
+                            const_cast<Edge *>(&pair.second));
     }
     {
-        auto &sibs = cache_->sibs_under_next;
+        auto &sibs = cache.sibs_under_next;
         for (auto &kv : nexts_) {
             if (kv.second.size() > 1) {
                 for (auto pid : kv.second) {
@@ -633,7 +637,7 @@ DiGraph::Cache &DiGraph::cache() const {
         }
     }
     {
-        auto &sibs = cache_->sibs_under_prev;
+        auto &sibs = cache.sibs_under_prev;
         for (auto &kv : prevs_) {
             if (kv.second.size() > 1) {
                 for (auto nid : kv.second) {
@@ -645,6 +649,7 @@ DiGraph::Cache &DiGraph::cache() const {
             kv.second.erase(kv.first);
         }
     }
+    cache_ = std::move(cache);
     return *cache_;
 }
 

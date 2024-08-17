@@ -4,6 +4,32 @@
 
 #include "types.hpp"
 
+template <class T>
+inline void hash_combine(std::size_t &seed, const T &value) {
+    seed ^= std::hash<T>()(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
+namespace std {
+template <typename... T>
+struct hash<tuple<T...>> {
+    size_t operator()(const tuple<T...> &t) const {
+        size_t seed = 0;
+        hash_tuple(seed, t);
+        return seed;
+    }
+
+  private:
+    template <std::size_t I = 0, typename... Ts>
+    inline typename enable_if<I == sizeof...(Ts), void>::type hash_tuple(size_t &seed, const tuple<Ts...> &t) const {}
+
+    template <std::size_t I = 0, typename... Ts>
+        inline typename enable_if < I<sizeof...(Ts), void>::type hash_tuple(size_t &seed, const tuple<Ts...> &t) const {
+        hash_combine(seed, get<I>(t));
+        hash_tuple<I + 1, Ts...>(seed, t);
+    }
+};
+}  // namespace std
+
 // https://github.com/cubao/networkx-graph/blob/b2ea16cd66dc77b4643a1a059c2496d44fef4532/src/main.cpp
 namespace cubao {
 struct DiGraph;
@@ -34,10 +60,11 @@ struct Sequences {
 };
 
 // head/tail of DiGraph node(road)
+using Endpoint = std::array<double, 2>;
 struct Endpoints {
     const DiGraph *graph{nullptr};
     bool is_wgs84 = true;
-    unordered_map<int64_t, std::tuple<Eigen::Vector2d, Eigen::Vector2d>> endpoints;  // (head, tail)
+    unordered_map<int64_t, std::tuple<Endpoint, Endpoint>> endpoints;  // (head, tail)
 };
 
 struct Path {
@@ -138,7 +165,9 @@ struct Node {
 };
 
 // link
-struct Edge {};
+struct Edge {
+    //
+};
 
 struct DiGraph {
     DiGraph() = default;
@@ -159,9 +188,8 @@ struct DiGraph {
                        const std::unordered_map<std::string, std::unordered_set<std::string>> &links);
     Bindings encode_bindings(const std::unordered_map<std::string, std::vector<Binding>> &bindings);
     Sequences encode_sequences(const std::vector<std::vector<std::string>> &sequences);
-    Endpoints encode_endpoints(
-        const std::unordered_map<std::string, std::tuple<Eigen::Vector2d, Eigen::Vector2d>> &endpoints,
-        bool is_wgs84 = true);
+    Endpoints encode_endpoints(const std::unordered_map<std::string, std::tuple<Endpoint, Endpoint>> &endpoints,
+                               bool is_wgs84 = true);
 
     std::optional<UbodtRecord> encode_ubodt(const std::string &source_road, const std::string &target_road,
                                             const std::string &source_next, const std::string &target_prev,
@@ -241,11 +269,13 @@ struct DiGraph {
 
   private:
     bool freezed_{false};
-    std::optional<double> round_scale_;
+    // nodes, edges
     std::unordered_map<int64_t, Node> nodes_;
     std::unordered_map<std::tuple<int64_t, int64_t>, Edge> edges_;
+    // topo
     unordered_map<int64_t, double> lengths_;
     unordered_map<int64_t, unordered_set<int64_t>> nexts_, prevs_;
+    // index road id
     mutable Indexer indexer_;
     struct Cache {
         std::unordered_map<std::string, Node *> nodes;
