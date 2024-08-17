@@ -10,8 +10,8 @@ inline double ROUND(double v, double s) {
 
 inline double ROUND(double v, std::optional<double> s) { return s ? ROUND(v, *s) : v; }
 
-inline double CLIP(double low, double v, double high) {
-    // return std::max(low, std::min(v, high));
+template<typename T>
+T CLIP(T low, T v, T high) {
     return v < low ? low : (v > high ? high : v);
 }
 
