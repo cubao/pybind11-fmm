@@ -43,8 +43,8 @@ PYBIND11_MODULE(_core, m) {
     )pbdoc");
 
     m.def("test_eigen", []() {
-        Eigen::Vector3d xyz;
-        dbg(xyz.transpose());
+        Eigen::Vector2d xy;
+        dbg(xy.transpose());
     });
 
 #ifdef VERSION_INFO

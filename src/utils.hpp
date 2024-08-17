@@ -2,6 +2,10 @@
 
 #include "types.hpp"
 
+// round to 10cm
+#define __ROUND__(x) cubao::ROUND(x, 10)
+// #define __ROUND__(x) x
+
 namespace cubao {
 
 inline double ROUND(double v, double s) {
@@ -65,4 +69,17 @@ inline Eigen::Vector2d heading_direction(double heading) {
     return Eigen::Vector2d(std::cos(yaw), std::sin(yaw));
 }
 
+inline bool starts_with(const std::vector<int64_t> &nodes, const std::vector<int64_t> &prefix) {
+    return !prefix.empty() &&                //
+           prefix.size() <= nodes.size() &&  //
+           std::equal(prefix.begin(), prefix.end(), nodes.begin());
+}
+
+inline bool ends_with(const std::vector<int64_t> &nodes, const std::vector<int64_t> &suffix) {
+    return !suffix.empty() &&                //
+           suffix.size() <= nodes.size() &&  //
+           std::equal(suffix.begin(), suffix.end(), &nodes[nodes.size() - suffix.size()]);
+}
+
+RowVectors douglas_simplify(const Eigen::Ref<const RowVectors> &coords, double epsilon, bool is_wgs84 = false);
 }  // namespace cubao
