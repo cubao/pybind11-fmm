@@ -96,8 +96,8 @@ RowVectors decode_polyline(const std::string &encoded) {
         int lon = deserialize(last_lon);
 
         // Shift the decimal point 5 places to the left
-        shape.push_back({static_cast<double>(lon) * kInvPolylinePrecision,
-                           static_cast<double>(lat) * kInvPolylinePrecision});
+        shape.push_back({static_cast<double>(lon) * kInvPolylinePrecision,  //
+                         static_cast<double>(lat) * kInvPolylinePrecision});
 
         // Remember the last one we encountered
         last_lon = lon;
