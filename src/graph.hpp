@@ -270,6 +270,7 @@ struct DiGraph {
   private:
     bool freezed_{false};
     // nodes, edges
+    // cannot use ankerl unordered_map, because it's not memory stable
     std::unordered_map<int64_t, Node> nodes_;
     std::unordered_map<std::tuple<int64_t, int64_t>, Edge> edges_;
     // topo
