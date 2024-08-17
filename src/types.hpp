@@ -13,14 +13,17 @@
 #endif
 
 namespace cubao {
+// coords type, 2d
+using RowVectors = Eigen::Matrix<double, Eigen::Dynamic, 2, Eigen::RowMajor>;
+
+// kv type
 template <typename Key, typename Value, typename Hash = ankerl::unordered_dense::hash<Key>,
           typename Equal = std::equal_to<Key>>
 using unordered_map = ankerl::unordered_dense::map<Key, Value, Hash, Equal>;
 template <typename Value, typename Hash = ankerl::unordered_dense::hash<Value>, typename Equal = std::equal_to<Value>>
 using unordered_set = ankerl::unordered_dense::set<Value, Hash, Equal>;
 
-// 2D
-using RowVectors = Eigen::Matrix<double, Eigen::Dynamic, 2, Eigen::RowMajor>;
+// string indexer
 
 struct Indexer {
     Indexer() = default;
@@ -106,6 +109,7 @@ struct Indexer {
     int64_t id_cursor_{1000000};
 };
 
+// 2d line segment
 struct LineSegment {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     const Eigen::Vector2d A, B, dir;
@@ -136,6 +140,11 @@ struct LineSegment {
         Eigen::Vector2d PP = A + dot * dir;
         return std::make_tuple(PP, (PP - P).norm(), dot / len);
     }
+};
+
+// 2d polyline, supports XY (cartesian) and WGS84
+struct Polyline {
+    // TODO
 };
 
 }  // namespace cubao
