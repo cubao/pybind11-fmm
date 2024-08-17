@@ -2,16 +2,17 @@
 
 #include <optional>
 #include <string>
+#include "ankerl/unordered_dense.h"
 
-#include "spdlog/spdlog.h"
-#include "types.hpp"
-// fix exposed macro 'GetObject' from wingdi.h (included by spdlog.h) under
-// windows, see https://github.com/Tencent/rapidjson/issues/1448
-#ifdef GetObject
-#undef GetObject
-#endif
+namespace cubao {
+template <typename Key, typename Value,
+          typename Hash = ankerl::unordered_dense::hash<Key>,
+          typename Equal = std::equal_to<Key>>
+using unordered_map = ankerl::unordered_dense::map<Key, Value, Hash, Equal>;
+template <typename Value, typename Hash = ankerl::unordered_dense::hash<Value>,
+          typename Equal = std::equal_to<Value>>
+using unordered_set = ankerl::unordered_dense::set<Value, Hash, Equal>;
 
-namespace nano_fmm {
 struct Indexer {
     Indexer() = default;
     Indexer(const std::map<std::string, int64_t> &index) { this->index(index); }
@@ -41,11 +42,11 @@ struct Indexer {
             return itr->second;
         }
         int round = 0;
-        auto id_str = fmt::format("{}", id);
+        auto id_str = std::to_string(id);
         auto str_id = id_str;
         while (str2int_.count(str_id)) {
             ++round;
-            str_id = fmt::format("{}/{}", id_str, round);
+            str_id = id_str + "/" + std::to_string(round);
         }
         index(str_id, id);
         return str_id;
@@ -95,4 +96,47 @@ struct Indexer {
     unordered_map<int64_t, std::string> int2str_;
     int64_t id_cursor_{1000000};
 };
-}  // namespace nano_fmm
+
+struct LineSegment
+{
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    const Eigen::Vector2d A, B, dir;
+    const double len;
+    LineSegment(const Eigen::Vector2d &a, const Eigen::Vector2d &b)
+        : A(a), B(b), dir((b - a).normalized()), len((b - a).norm())
+    {
+    }
+    LineSegment(const Eigen::Vector2d &a, const Eigen::Vector2d &b,
+                const Eigen::Vector2d &dir, double length)
+        : A(a), B(b), dir(dir), len(length)
+    {
+    }
+
+    double dist(const Eigen::Vector2d &P) const { return std::sqrt(dist2(P)); }
+    double dist2(const Eigen::Vector2d &P) const
+    {
+        double dot = (P - A).dot(dir);
+        if (dot <= 0) {
+            return (P - A).squaredNorm();
+        } else if (dot >= len) {
+            return (P - B).squaredNorm();
+        }
+        return (A + dot * dir - P).squaredNorm();
+    }
+
+    std::tuple<Eigen::Vector3d, double, double>
+    nearest(const Eigen::Vector2d &P) const
+    {
+        double dot = (P - A).dot(dir);
+        if (dot <= 0) {
+            return std::make_tuple(A, (P - A).norm(), 0.0);
+        } else if (dot >= len) {
+            return std::make_tuple(B, (P - B).norm(), 1.0);
+        }
+        Eigen::Vector2d PP = A + dot * dir;
+        return std::make_tuple(PP, (PP - P).norm(), dot / len);
+    }
+};
+
+
+}  // namespace cubao
