@@ -8,13 +8,14 @@
 namespace cubao {
 struct DiGraph;
 
+// routing on graph, you sink/stop at (on) sinks, no passing through
 struct Sinks {
-    // you stop at (on) sinks, no passing through
     const DiGraph *graph{nullptr};
     unordered_set<int64_t> nodes;
     unordered_map<int64_t, std::vector<int64_t>> links;
 };
 
+// routing on graph, you may stop (finish) on binding
 using Binding = std::tuple<double, double, std::any>;  // start, end, data
 struct Bindings {
     // you stop at first hit of bindings
@@ -23,6 +24,7 @@ struct Bindings {
     void sort();
 };
 
+// search TODO
 struct Sequences {
     const DiGraph *graph{nullptr};
     unordered_map<int64_t, std::vector<std::vector<int64_t>>> head2seqs;
@@ -31,6 +33,7 @@ struct Sequences {
                                                                bool quick_return = true) const;
 };
 
+// head/tail of DiGraph node(road)
 struct Endpoints {
     const DiGraph *graph{nullptr};
     bool is_wgs84 = true;
@@ -49,8 +52,11 @@ struct Path {
     std::optional<double> end_offset;
     std::optional<std::tuple<int64_t, Binding>> binding;
 
+    bool valid() const { return graph && !nodes.empty(); }
+
     // idx, t
     std::tuple<int, double> along(double offset) const;
+    std::optional<Path> slice(double start_offset, double end_offset) const;
 };
 
 struct ZigzagPath : Path {
@@ -126,10 +132,12 @@ struct UbodtRecord {
     double cost{0.0};
 };
 
+// road
 struct Node {
     double length{1.0};
 };
 
+// link
 struct Edge {};
 
 struct DiGraph {
@@ -137,14 +145,13 @@ struct DiGraph {
     Node &add_node(const std::string &id, double length = 1.0);
     Edge &add_edge(const std::string &node0, const std::string &node1);
 
+    std::vector<std::string> prevs(const std::string &id) const { return __nexts(id, prevs_); }
+    std::vector<std::string> nexts(const std::string &id) const { return __nexts(id, nexts_); }
     const std::unordered_map<std::string, std::unordered_set<std::string>> sibs_under_next() const;
     const std::unordered_map<std::string, std::unordered_set<std::string>> sibs_under_prev() const;
 
     const std::unordered_map<std::string, Node *> &nodes() const { return cache().nodes; }
     const std::unordered_map<std::tuple<std::string, std::string>, Edge *> &edges() const { return cache().edges; }
-
-    std::vector<std::string> predecessors(const std::string &id) const { return __nexts(id, prevs_); }
-    std::vector<std::string> successors(const std::string &id) const { return __nexts(id, nexts_); }
 
     // encode sinks/bindings/sequences/endpoints
     // it's not const, because we need to index road ids
@@ -172,13 +179,15 @@ struct DiGraph {
                                       const std::string &target,            //
                                       double cutoff,                        //
                                       std::optional<double> source_offset,  //
-                                      std::optional<double> target_offset, const Sinks *sinks = nullptr,
+                                      std::optional<double> target_offset,  //
+                                      const Sinks *sinks = nullptr,         //
                                       const Endpoints *endpoints = nullptr) const;
 
     std::optional<ZigzagPath> shortest_zigzag_path(const std::string &source,                 //
                                                    const std::optional<std::string> &target,  //
                                                    double cutoff,                             //
-                                                   int direction = 0, ZigzagPathGenerator *generator = nullptr) const;
+                                                   int direction = 0,                         //
+                                                   ZigzagPathGenerator *generator = nullptr) const;
 
     ShortestPathGenerator shortest_paths(const std::string &start,           //
                                          double cutoff,                      //
@@ -195,7 +204,8 @@ struct DiGraph {
                                 const std::string &target,            //
                                 double cutoff,                        //
                                 std::optional<double> source_offset,  //
-                                std::optional<double> target_offset, const Sinks *sinks = nullptr) const;
+                                std::optional<double> target_offset,  //
+                                const Sinks *sinks = nullptr) const;
 
     std::tuple<std::optional<Path>, std::optional<Path>> shortest_path_to_bindings(
         const std::string &source,          //
@@ -208,7 +218,7 @@ struct DiGraph {
                                                                                   double cutoff,                      //
                                                                                   const Bindings &bindings,           //
                                                                                   std::optional<double> offset = {},  //
-                                                                                  int direction = 0,
+                                                                                  int direction = 0,                  //
                                                                                   const Sinks *sinks = nullptr) const;
 
     std::tuple<std::vector<Path>, std::vector<Path>> all_paths_to_bindings(const std::string &source,          //

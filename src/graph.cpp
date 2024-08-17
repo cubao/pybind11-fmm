@@ -10,7 +10,7 @@ namespace cubao {
 #define __ROUND__(x) ROUND(x, 10)
 // #define __ROUND__(x) x
 
-void __round__(Path &path) { path.dist }
+// void __round__(Path &path) { path.dist }
 
 // void round(Path &r)
 // {
@@ -23,10 +23,11 @@ void __round__(Path &path) { path.dist }
 //     }
 // }
 
-static void single_source_dijkstra(int64_t start, double cutoff,                                 //
-                                   const unordered_map<int64_t, unordered_set<int64_t>> &jumps,  //
-                                   unordered_map<int64_t, int64_t> &pmap,                        //
+static void single_source_dijkstra(unordered_map<int64_t, int64_t> &pmap,                        //
                                    unordered_map<int64_t, double> &dmap,                         //
+                                   int64_t start, double cutoff,                                 //
+                                   const unordered_map<int64_t, unordered_set<int64_t>> &jumps,  //
+                                   const unordered_map<int64_t, double> &lengths,                //
                                    const Sinks *sinks = nullptr,                                 //
                                    double init_offset = 0.0) {
     // https://github.com/cyang-kth/fmm/blob/5cccc608903877b62969e41a58b60197a37a5c01/src/network/network_graph.cpp#L234-L274
@@ -61,7 +62,7 @@ static void single_source_dijkstra(int64_t start, double cutoff,                
         if (itr == jumps.end()) {
             continue;
         }
-        double u_cost = lengths_.at(u);
+        double u_cost = lengths.at(u);
         for (auto v : itr->second) {
             auto c = node.value + u_cost;
             auto iter = dmap.find(v);
@@ -336,7 +337,9 @@ std::optional<Path> DiGraph::shortest_path(const std::string &source,           
                                            const std::string &target,            //
                                            double cutoff,                        //
                                            std::optional<double> source_offset,  //
-                                           std::optional<double> target_offset, const Sinks *sinks) const {
+                                           std::optional<double> target_offset,  //
+                                           const Sinks *sinks,                   //
+                                           const Endpoints *endpoints) const {
     if (cutoff < 0) {
         return {};
     }
@@ -403,7 +406,8 @@ std::optional<Path> DiGraph::shortest_path(const std::string &source,           
 std::optional<ZigzagPath> DiGraph::shortest_zigzag_path(const std::string &source,                 //
                                                         const std::optional<std::string> &target,  //
                                                         double cutoff,                             //
-                                                        int direction = 0, ZigzagPathGenerator *generator) const {
+                                                        int direction = 0,                         //
+                                                        ZigzagPathGenerator *generator) const {
     if (cutoff < 0) {
         return {};
     }
@@ -551,20 +555,20 @@ std::vector<Path> DiGraph::all_paths(const std::string &source,            //
             p.end_offset = target_offset;
         }
     }
-    if (round_scale_) {
-        for (auto &p : paths) {
-            p.round(*round_scale_);
-        }
-    }
+    // if (round_scale_) {
+    //     for (auto &p : paths) {
+    //         p.round(*round_scale_);
+    //     }
+    // }
     return paths;
 }
 
 std::tuple<std::optional<Path>, std::optional<Path>> DiGraph::shortest_path_to_bindings(
-    const std::string &source,          //
-    double cutoff,                      //
-    const Bindings &bindings,           //
-    std::optional<double> offset = {},  //
-    int direction = 0,                  // 0 -> forwards/backwards, 1->forwards, -1:backwards
+    const std::string &source,     //
+    double cutoff,                 //
+    const Bindings &bindings,      //
+    std::optional<double> offset,  //
+    int direction,                 // 0 -> forwards/backwards, 1->forwards, -1:backwards
     const Sinks *sinks) const {
     if (bindings.graph != this) {
         return {};

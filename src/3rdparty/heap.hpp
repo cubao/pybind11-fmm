@@ -46,9 +46,7 @@
 #include <iostream>
 #include <limits>
 
-#include "types.hpp"
-
-namespace nano_fmm {
+namespace cubao {
 template <class T, class Comp = std::less<T>>
 class FibHeap {
   public:
@@ -95,10 +93,7 @@ class FibHeap {
 
         FibNode *cur = x;
         while (true) {
-            /*std::cerr << "cur: " << cur << std::endl;
-              std::cerr << "x: " << x << std::endl;*/
             if (cur->left && cur->left != x) {
-                // std::cerr << "cur left: " << cur->left << std::endl;
                 FibNode *tmp = cur;
                 cur = cur->left;
                 if (tmp->child) delete_fibnodes(tmp->child);
@@ -563,4 +558,4 @@ struct Heap {
     typedef typename FibHeap<HeapNode<T>>::FibNode *HeapNodeHandle;
     unordered_map<T, HeapNodeHandle> handle_data;
 };
-}  // namespace nano_fmm
+}  // namespace cubao
