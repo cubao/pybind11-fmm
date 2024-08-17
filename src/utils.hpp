@@ -4,18 +4,13 @@
 
 namespace cubao {
 
-inline double ROUND(double v, double s)
-{
-    return std::floor(v * s + 0.5) / s; // not same std::round(v * s) / s;
+inline double ROUND(double v, double s) {
+    return std::floor(v * s + 0.5) / s;  // not same std::round(v * s) / s;
 }
 
-inline double ROUND(double v, std::optional<double> s)
-{
-    return s ? ROUND(v, *s) : v;
-}
+inline double ROUND(double v, std::optional<double> s) { return s ? ROUND(v, *s) : v; }
 
-inline double CLIP(double low, double v, double high)
-{
+inline double CLIP(double low, double v, double high) {
     // return std::max(low, std::min(v, high));
     return v < low ? low : (v > high ? high : v);
 }
@@ -34,8 +29,8 @@ inline Eigen::Vector2d cheap_ruler_k(double latitude) {
     return Eigen::Vector3d(MUL * w * coslat, MUL * w * w2 * (1.0 - E2));
 }
 
-inline RowVectors wgs84_to_xy(const Eigen::Ref<const RowVectors> &wgs84, //
-std::optional<Eigen::Vector3d> anchor = {}, //
+inline RowVectors wgs84_to_xy(const Eigen::Ref<const RowVectors> &wgs84,   //
+                              std::optional<Eigen::Vector3d> anchor = {},  //
                               std::optional<Eigen::Vector3d> k = {}) {
     if (!anchor) {
         anchor = wgs84.row(0);
@@ -51,8 +46,8 @@ std::optional<Eigen::Vector3d> anchor = {}, //
     return xys;
 }
 
-inline RowVectors xys_to_wgs84(const Eigen::Ref<const RowVectors> &xys, //
-const Eigen::Vector3d &anchor, //
+inline RowVectors xys_to_wgs84(const Eigen::Ref<const RowVectors> &xys,  //
+                               const Eigen::Vector3d &anchor,            //
                                std::optional<Eigen::Vector3d> k = {}) {
     if (!k) {
         k = cheap_ruler_k(anchor[1]);

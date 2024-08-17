@@ -1,6 +1,5 @@
 #pragma once
 
 namespace cubao {
-struct Network {
-};
-}
+struct Network {};
+}  // namespace cubao
