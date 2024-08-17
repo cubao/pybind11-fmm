@@ -10,8 +10,8 @@ inline double ROUND(double v, double s) {
 
 inline double ROUND(double v, std::optional<double> s) { return s ? ROUND(v, *s) : v; }
 
-inline double CLIP(double low, double v, double high) {
-    // return std::max(low, std::min(v, high));
+template <typename T>
+T CLIP(T low, T v, T high) {
     return v < low ? low : (v > high ? high : v);
 }
 
@@ -78,4 +78,8 @@ inline bool ends_with(const std::vector<int64_t> &nodes, const std::vector<int64
 }
 
 RowVectors douglas_simplify(const Eigen::Ref<const RowVectors> &coords, double epsilon, bool is_wgs84 = false);
+
+std::string encode_polyline(const Eigen::Ref<const RowVectors> &coords);
+RowVectors decode_polyline(const std::string &encoded);
+
 }  // namespace cubao

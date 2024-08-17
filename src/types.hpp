@@ -150,7 +150,50 @@ struct LineSegment {
 
 // 2d polyline, supports XY (cartesian) and WGS84
 struct Polyline {
-    // TODO
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    Polyline(const Eigen::Ref<const RowVectors> &coords, bool is_wgs84 = true);
+    Polyline(const Eigen::Ref<const RowVectors> &coords, const Eigen::Vector2d &k);
+
+    const Eigen::VectorXd &offsets() const;
+    double offset(int seg_idx, double t = 0.0) const;
+    double length() const;
+
+    int segment_index(double offset) const;
+    std::pair<int, double> segment_index_t(double offset) const;
+    const RowVectors &dirs() const;
+    Eigen::Vector2d dir(int pt_idx) const;
+    Eigen::Vector2d dir(double offset, bool smooth_joint = false) const;
+
+    Eigen::Vector2d along(double offset, bool extrapolate = false) const;
+    std::pair<Eigen::Vector2d, Eigen::Vector2d> arrow(double offset, bool extrapolate = false,
+                                                      bool smooth_joint = false) const;
+
+    // P', distance, seg_idx, t
+    std::tuple<Eigen::Vector2d, double, int, double> nearest(const Eigen::Vector2d &pos,
+                                                             int seg_min = -1,  //
+                                                             int seg_max = -1) const;
+    std::tuple<Eigen::Vector2d, double, int, double> nearest(const Eigen::Vector2d &pos,  //
+                                                             const Eigen::Vector2d &dir,  //
+                                                             double max_angle_offset,     //
+                                                             int seg_min = -1,            //
+                                                             int seg_max = -1) const;
+
+    const RowVectors coords_;
+    const int N_;
+    const bool is_wgs84_;
+    const Eigen::Vector2d k_;
+    const Eigen::Vector4d &bbox() const;
+
+  private:
+    mutable std::optional<Eigen::Vector4d> bbox_;
+    struct Cache {
+        Eigen::VectorXd offsets_;
+        RowVectors dirs_;
+        std::vector<LineSegment> segments_;
+    };
+    const Cache &cache() const;
+    mutable std::optional<Cache> cache_;
 };
 
 }  // namespace cubao
