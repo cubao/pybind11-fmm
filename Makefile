@@ -20,8 +20,8 @@ force_clean:
 	docker run --rm -v `pwd`:`pwd` -w `pwd` -it alpine/make make clean
 
 pytest:
-	python3 -m pip install pytest numpy
-	pytest tests # --capture=tee-sys
+	# python3 -m pip install pytest numpy
+	pytest -rP tests # --capture=tee-sys
 .PHONY: test pytest
 
 DOCKER_TAG_WINDOWS ?= ghcr.io/cubao/build-env-windows-x64:v0.0.1
