@@ -166,28 +166,25 @@ struct Polyline {
     Eigen::Vector2d dir(double offset, bool smooth_joint = false) const;
 
     Eigen::Vector2d along(double offset, bool extrapolate = false) const;
-    std::pair<Eigen::Vector2d, Eigen::Vector3d>
-    arrow(double offset, bool extrapolate = false,
-          bool smooth_joint = false) const;
+    std::pair<Eigen::Vector2d, Eigen::Vector3d> arrow(double offset, bool extrapolate = false,
+                                                      bool smooth_joint = false) const;
 
     // P', distance, seg_idx, t
-    std::tuple<Eigen::Vector2d, double, int, double>
-    nearest(const Eigen::Vector2d &pos,
-            int seg_min = -1,           //
-            int seg_max = -1) const;
-    
-    std::tuple<Eigen::Vector2d, double, int, double>
-    nearest(const Eigen::Vector2d &pos, //
-            const Eigen::Vector2d &dir, //
-            double max_angle_offset,    //
-            int seg_min = -1,           //
-            int seg_max = -1) const;
+    std::tuple<Eigen::Vector2d, double, int, double> nearest(const Eigen::Vector2d &pos,
+                                                             int seg_min = -1,  //
+                                                             int seg_max = -1) const;
+
+    std::tuple<Eigen::Vector2d, double, int, double> nearest(const Eigen::Vector2d &pos,  //
+                                                             const Eigen::Vector2d &dir,  //
+                                                             double max_angle_offset,     //
+                                                             int seg_min = -1,            //
+                                                             int seg_max = -1) const;
 
     const RowVectors coords_;
     const int N_;
     const bool is_wgs84_;
     const Eigen::Vector2d k_;
-    const Eigen::Vector4d&bbox() const;
+    const Eigen::Vector4d &bbox() const;
 
   private:
     mutable std::optional<Eigen::Vector4d> bbox_;
