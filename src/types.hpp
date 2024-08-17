@@ -166,14 +166,13 @@ struct Polyline {
     Eigen::Vector2d dir(double offset, bool smooth_joint = false) const;
 
     Eigen::Vector2d along(double offset, bool extrapolate = false) const;
-    std::pair<Eigen::Vector2d, Eigen::Vector3d> arrow(double offset, bool extrapolate = false,
+    std::pair<Eigen::Vector2d, Eigen::Vector2d> arrow(double offset, bool extrapolate = false,
                                                       bool smooth_joint = false) const;
 
     // P', distance, seg_idx, t
     std::tuple<Eigen::Vector2d, double, int, double> nearest(const Eigen::Vector2d &pos,
                                                              int seg_min = -1,  //
                                                              int seg_max = -1) const;
-
     std::tuple<Eigen::Vector2d, double, int, double> nearest(const Eigen::Vector2d &pos,  //
                                                              const Eigen::Vector2d &dir,  //
                                                              double max_angle_offset,     //
