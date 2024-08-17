@@ -52,10 +52,14 @@ build:
 python_install:
 	$(PYTHON) -m pip install . --verbose
 python_wheel:
+	# pip install wheel
 	$(PYTHON) -m pip wheel . -w dist --verbose
 python_build: python_wheel
 python_sdist:
-	$(PYTHON) -m pip sdist . --verbose
+	# pip install build
+	$(PYTHON) -m build --sdist --verbose
+python_install_sdist:
+	$(PYTHON) -m pip install dist/*.tar.gz --verbose
 python_test: pytest
 .PHONY: build
 
