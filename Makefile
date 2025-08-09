@@ -20,7 +20,7 @@ force_clean:
 	docker run --rm -v `pwd`:`pwd` -w `pwd` -it alpine/make make clean
 
 pytest:
-	# python3 -m pip install pytest numpy
+	python3 -m pip install pytest
 	pytest -rP tests # --capture=tee-sys
 .PHONY: test pytest
 
@@ -52,14 +52,9 @@ build:
 python_install:
 	$(PYTHON) -m pip install . --verbose
 python_wheel:
-	# pip install wheel
-	$(PYTHON) -m pip wheel . -w dist --verbose
-python_build: python_wheel
+	$(PYTHON) -m pip wheel . -w build --verbose
 python_sdist:
-	# pip install build
-	$(PYTHON) -m build --sdist --verbose
-python_install_sdist:
-	$(PYTHON) -m pip install dist/*.tar.gz --verbose
+	$(PYTHON) -m pip sdist . --verbose
 python_test: pytest
 .PHONY: build
 
@@ -84,7 +79,7 @@ python_build_all_in_macos: python_build_py38 python_build_py39 python_build_py31
 python_build_all_in_windows: python_build_all
 
 repair_wheels:
-	python -m pip install auditwheel # sudo apt install patchelf, conda install -c conda-forge patchelf
+	python -m pip install auditwheel # sudo apt install patchelf
 	ls dist/*-linux_x86_64.whl | xargs -n1 auditwheel repair --plat manylinux2014_x86_64
 	rm -rf dist/*-linux_x86_64.whl && cp wheelhouse/*.whl dist && rm -rf wheelhouse
 
