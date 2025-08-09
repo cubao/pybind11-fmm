@@ -653,4 +653,75 @@ DiGraph::Cache &DiGraph::cache() const {
     return *cache_;
 }
 
+std::optional<Path> DiGraph::__dijkstra(int64_t source, int64_t target, double cutoff, const Sinks *sinks) const {
+    // TODO: implement dijkstra algorithm
+    return {};
+}
+
+std::optional<Path> DiGraph::__astar(int64_t source, int64_t target, double cutoff,  //
+                                     const Endpoints &endpoints,                     //
+                                     const Sinks *sinks) const {
+    // TODO: implement A* algorithm
+    return {};
+}
+
+std::optional<ZigzagPath> DiGraph::__shortest_zigzag_path(int64_t source, std::optional<int64_t> target,
+                                                          double cutoff,  //
+                                                          int direction,  //
+                                                          ZigzagPathGenerator *generator) const {
+    // TODO: implement zigzag path finding
+    return {};
+}
+
+std::optional<Path> DiGraph::__shortest_path_to_bindings(int64_t source, std::optional<double> source_offset,
+                                                         double source_length, double cutoff,  //
+                                                         const Bindings &bindings,             //
+                                                         const Sinks *sinks, bool reverse) const {
+    // TODO: implement shortest path to bindings
+    return {};
+}
+
+std::vector<Path> DiGraph::__all_paths(int64_t source, double cutoff, std::optional<double> offset,
+                                       const unordered_map<int64_t, double> &lengths,
+                                       const unordered_map<int64_t, unordered_set<int64_t>> &jumps,
+                                       const Sinks *sinks) const {
+    // TODO: implement all paths from source
+    return {};
+}
+
+std::vector<Path> DiGraph::__all_paths(int64_t source, int64_t target, double cutoff, const Sinks *sinks) const {
+    // TODO: implement all paths between source and target
+    return {};
+}
+
+std::vector<Path> DiGraph::__all_path_to_bindings__(int64_t source, std::optional<double> source_offset,
+                                                    double source_length, double cutoff, const Bindings &bindings,
+                                                    const Sinks *sinks, bool reverse) const {
+    // TODO: implement all paths to bindings
+    return {};
+}
+
+std::vector<Path> DiGraph::__all_path_to_bindings(int64_t source, std::optional<double> source_offset,
+                                                  double source_length, double cutoff, const Bindings &bindings,
+                                                  const Sinks *sinks, bool reverse, bool with_endings) const {
+    // TODO: implement all paths to bindings with endings
+    return {};
+}
+
+std::vector<UbodtRecord> DiGraph::build_ubodt(int64_t source, double thresh) const {
+    // TODO: implement UBODT construction for single source
+    return {};
+}
+
+std::vector<UbodtRecord> DiGraph::build_ubodt(double thresh, int pool_size, int nodes_thresh) const {
+    // TODO: implement UBODT construction for all sources
+    return {};
+}
+
+void DiGraph::build() const {
+    // TODO: build graph indices
+}
+
+void DiGraph::reset() const { cache_.reset(); }
+
 }  // namespace cubao

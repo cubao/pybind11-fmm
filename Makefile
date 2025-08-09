@@ -7,6 +7,7 @@ all:
 
 lint:
 	pre-commit run -a
+	prettier --write index.html
 lint_install:
 	pre-commit install
 .PHONY: lint
