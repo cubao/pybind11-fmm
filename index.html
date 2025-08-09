@@ -130,7 +130,7 @@
             }
         </script>
         <script type="module">
-            import { createApp, ref, watch } from 'vue';
+            import { createApp, ref, shallowRef, watch } from 'vue';
             import { createVuetify } from 'vuetify';
             import { useUrlSearchParams } from '@vueuse/core';
 
@@ -139,7 +139,7 @@
 
             createApp({
                 setup() {
-                    const map = ref(null);
+                    const map = shallowRef(null);
                     const mapSources = ref({});
                     const drawer = ref(false);
 
@@ -218,10 +218,16 @@
                             style: emptyStyle,
                             center: [centerLon.value, centerLat.value],
                             zoom: zoom.value,
+                            bearing: parseFloat(params.bearing || '0.0'),
                             maplibreLogo: false,
                             minZoom: 2,
                             maxZoom: 24,
-                            attributionControl: true,
+                            // disable interaction
+                            pitchWithRotate: false,
+                            rollEnabled: false,
+                            touchPitch: false,
+                            // touchZoomRotate: false,
+                            attributionControl: false,
                         });
 
                         map.value.on('load', () => {
@@ -239,6 +245,12 @@
                             params.lon = centerLon.value.toString();
                             params.lat = centerLat.value.toString();
                             params.zoom = zoom.value.toString();
+                            const bearing = map.value.getBearing();
+                            if (bearing != 0.0) {
+                                params.bearing = bearing.toFixed(2);
+                            } else {
+                                delete params.bearing;
+                            }
                         });
                     };
 
