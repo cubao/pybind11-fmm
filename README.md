@@ -1,3 +1,3 @@
-# fmmpy
+# pybind11-fmm
 
 TODO
