@@ -46,9 +46,9 @@ inline RowVectors wgs84_to_xy(const Eigen::Ref<const RowVectors> &wgs84,   //
     return xys;
 }
 
-inline RowVectors xys_to_wgs84(const Eigen::Ref<const RowVectors> &xys,  //
-                               const Eigen::Vector2d &anchor,            //
-                               std::optional<Eigen::Vector2d> k = {}) {
+inline RowVectors xy_to_wgs84(const Eigen::Ref<const RowVectors> &xys,  //
+                              const Eigen::Vector2d &anchor,            //
+                              std::optional<Eigen::Vector2d> k = {}) {
     if (!k) {
         k = cheap_ruler_k(anchor[1]);
     }
