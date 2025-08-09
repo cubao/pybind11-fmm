@@ -37,9 +37,12 @@
                 <v-btn
                     icon="mdi-cog"
                     color="primary"
-                    style="position: fixed; top: 16px; left: 16px; z-index: 1000;"
+                    style="position: fixed; top: 16px; left: 16px; z-index: 1000; opacity: 0.4; transition: opacity 0.2s;"
                     @click="drawer = !drawer"
                     elevation="2"
+                    size="small"
+                    @mouseenter="$event.target.style.opacity = '1'"
+                    @mouseleave="$event.target.style.opacity = '0.4'"
                 ></v-btn>
 
                 <v-navigation-drawer
