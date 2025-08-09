@@ -2169,7 +2169,7 @@ poolstl::internal::enable_if_poolstl_policy<ExecPolicy, RandIt> find_if_not(Exec
 #if POOLSTL_HAVE_CXX17_LIB
                         std::not_fn(p)
 #else
-                        [&p](const typename std::iterator_traits<RandIt>::value_type &test) { return !p(test); }
+                        [&p](const typename std::iterator_traits<RandIt>::value_type& test) { return !p(test); }
 #endif
     );
 }
