@@ -4,9 +4,9 @@ build-backend = "scikit_build_core.build"
 
 
 [project]
-name = "fmmpy"
+name = "pybind11_fmm"
 version = "0.0.1"
-description="fmmpy"
+description="fmm with python binding"
 readme = "README.md"
 authors = [
   { name = "district10", email = "dvorak4tzx@gmail.com" },
@@ -25,6 +25,7 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 
 [project.optional-dependencies]
