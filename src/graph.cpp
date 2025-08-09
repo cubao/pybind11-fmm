@@ -658,22 +658,25 @@ std::optional<Path> DiGraph::__dijkstra(int64_t source, int64_t target, double c
     return {};
 }
 
-std::optional<Path> DiGraph::__astar(int64_t source, int64_t target, double cutoff, const Endpoints &endpoints,
+std::optional<Path> DiGraph::__astar(int64_t source, int64_t target, double cutoff,  //
+                                     const Endpoints &endpoints,                     //
                                      const Sinks *sinks) const {
     // TODO: implement A* algorithm
     return {};
 }
 
-std::optional<ZigzagPath> DiGraph::__shortest_zigzag_path(int64_t source, std::optional<int64_t> target, double cutoff,
-                                                          int direction, ZigzagPathGenerator *generator) const {
+std::optional<ZigzagPath> DiGraph::__shortest_zigzag_path(int64_t source, std::optional<int64_t> target,
+                                                          double cutoff,  //
+                                                          int direction,  //
+                                                          ZigzagPathGenerator *generator) const {
     // TODO: implement zigzag path finding
     return {};
 }
 
 std::optional<Path> DiGraph::__shortest_path_to_bindings(int64_t source, std::optional<double> source_offset,
-                                                         double source_length, double cutoff,
-                                                         const Bindings &bindings, const Sinks *sinks,
-                                                         bool reverse) const {
+                                                         double source_length, double cutoff,  //
+                                                         const Bindings &bindings,             //
+                                                         const Sinks *sinks, bool reverse) const {
     // TODO: implement shortest path to bindings
     return {};
 }
@@ -719,8 +722,6 @@ void DiGraph::build() const {
     // TODO: build graph indices
 }
 
-void DiGraph::reset() const {
-    cache_.reset();
-}
+void DiGraph::reset() const { cache_.reset(); }
 
 }  // namespace cubao
