@@ -31,6 +31,67 @@
 
     <body>
         <div id="map"></div>
+        <div id="app">
+            <v-app>
+                <v-navigation-drawer
+                    v-model="drawer"
+                    location="left"
+                    :width="300"
+                    :temporary="false"
+                    :permanent="true"
+                    :floating="true"
+                >
+                    <v-list>
+                        <v-list-item>
+                            <v-select
+                                v-model="basemap"
+                                :items="basemapOptions"
+                                label="底图选择"
+                                dense
+                                hide-details
+                            ></v-select>
+                        </v-list-item>
+
+                        <v-list-item>
+                            <v-slider
+                                v-model="basemapOpacity"
+                                label="透明度"
+                                min="0"
+                                max="1"
+                                step="0.1"
+                                hide-details
+                            ></v-slider>
+                        </v-list-item>
+
+                        <v-list-item>
+                            <v-text-field
+                                v-model="centerInput"
+                                label="中心坐标 (lon,lat)"
+                                placeholder="116.419181,39.901624"
+                                dense
+                                hide-details
+                                @change="updateCenter"
+                            ></v-text-field>
+                        </v-list-item>
+
+                        <v-list-item>
+                            <v-text-field
+                                v-model="zoom"
+                                label="缩放级别"
+                                type="number"
+                                min="2"
+                                max="24"
+                                step="0.1"
+                                dense
+                                hide-details
+                            ></v-text-field>
+                        </v-list-item>
+                    </v-list>
+                </v-navigation-drawer>
+
+                <v-main> </v-main>
+            </v-app>
+        </div>
 
         <script src="https://unpkg.com/maplibre-gl@5.3.0/dist/maplibre-gl.js"></script>
         <script type="importmap">
@@ -55,12 +116,14 @@
                 setup() {
                     const map = ref(null);
                     const mapSources = ref({});
+                    const drawer = ref(true);
 
                     const basemap = ref(params.basemap || 'gaode_normal');
                     const basemapOpacity = ref(parseFloat(params.basemap_opacity || '1.0'));
                     const centerLon = ref(parseFloat(params.lon || '116.419181'));
                     const centerLat = ref(parseFloat(params.lat || '39.901624'));
                     const zoom = ref(parseFloat(params.zoom || '10'));
+                    const centerInput = ref(`${centerLon.value},${centerLat.value}`);
 
                     const basemapOptions = [
                         { title: '高德标准', value: 'gaode_normal' },
@@ -146,6 +209,7 @@
                             centerLon.value = parseFloat(center.lng.toFixed(6));
                             centerLat.value = parseFloat(center.lat.toFixed(6));
                             zoom.value = parseFloat(map.value.getZoom().toFixed(2));
+                            centerInput.value = `${centerLon.value},${centerLat.value}`;
 
                             params.lon = centerLon.value.toString();
                             params.lat = centerLat.value.toString();
@@ -174,6 +238,19 @@
                         });
                     };
 
+                    const updateCenter = () => {
+                        const coords = centerInput.value.split(',').map((s) => parseFloat(s.trim()));
+                        if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+                            centerLon.value = coords[0];
+                            centerLat.value = coords[1];
+                            if (map.value) {
+                                map.value.jumpTo({
+                                    center: [centerLon.value, centerLat.value],
+                                });
+                            }
+                        }
+                    };
+
                     watch(basemap, updateBasemap);
                     watch(basemapOpacity, (newOpacity) => {
                         if (map.value && map.value.getLayer('base-layer')) {
@@ -182,13 +259,20 @@
                         params.basemap_opacity = newOpacity.toString();
                     });
 
-                    watch([centerLon, centerLat, zoom], ([lon, lat, z]) => {
+                    watch([centerLon, centerLat], ([lon, lat]) => {
+                        centerInput.value = `${lon},${lat}`;
                         if (map.value) {
                             map.value.jumpTo({
                                 center: [lon, lat],
-                                zoom: z,
                             });
                         }
+                    });
+
+                    watch(zoom, (newZoom) => {
+                        if (map.value) {
+                            map.value.jumpTo({ zoom: newZoom });
+                        }
+                        params.zoom = newZoom.toString();
                     });
 
                     watch(basemap, (newBasemap) => {
@@ -198,17 +282,18 @@
                     initMap();
 
                     return {
+                        drawer,
                         basemap,
                         basemapOpacity,
-                        centerLon,
-                        centerLat,
+                        centerInput,
                         zoom,
                         basemapOptions,
+                        updateCenter,
                     };
                 },
             })
                 .use(vuetify)
-                .mount('#map');
+                .mount('#app');
         </script>
     </body>
 </html>
