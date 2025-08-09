@@ -1,0 +1,987 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>FramesPack Viewer</title>
+        <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.3.0/dist/maplibre-gl.css" />
+        <link rel="stylesheet" href="https://unpkg.com/vuetify@3.8.0/dist/vuetify.min.css" />
+        <link rel="stylesheet" href="https://unpkg.com/@mdi/font@latest/css/materialdesignicons.min.css" />
+        <link rel="stylesheet" href="https://fonts.bunny.net/css?family=roboto:400,500,700" />
+        <style>
+            html,
+            body {
+                height: 100%;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+            }
+            #app {
+                height: 100%;
+                width: 100%;
+                position: relative;
+            }
+            #layout {
+                display: flex;
+                height: 100%;
+            }
+            #left-panel {
+                width: 30%;
+                display: flex;
+                flex-direction: column;
+            }
+            #map {
+                flex: 2;
+                box-shadow: 0 0 2px 1px rgba(0, 0, 255, 0.5);
+                min-height: 200px;
+            }
+            #threejs {
+                flex: 8;
+                min-height: 400px;
+                position: relative;
+            }
+            #right-panel {
+                flex: 1;
+                display: flex;
+                justify-content: center;
+                align-items: top;
+                flex-direction: column;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="app">
+            <div id="layout">
+                <div id="left-panel">
+                    <div id="map"></div>
+                    <div id="threejs"></div>
+                </div>
+                <div id="right-panel">
+                    <p>{{ status }}</p>
+                    <div v-if="!ready">{{ message }}</div>
+                    <v-slider
+                        v-model="frame_index"
+                        :min="frame_index_min"
+                        :max="frame_index_max"
+                        :step="1"
+                        thumb-label
+                        hide-details
+                        class="mx-4"
+                    >
+                        <template v-slot:prepend>
+                            <v-text-field
+                                label="frame_index"
+                                v-model="frame_index"
+                                density="compact"
+                                type="number"
+                                :rules="[v => Number.isInteger(Number(v)) || 'Must be an integer',
+                                        v => v >= frame_index_min || `Must be at least ${frame_index_min}`,
+                                        v => v <= frame_index_max || `Must not exceed ${frame_index_max}`]"
+                                :min="frame_index_min"
+                                :max="frame_index_max"
+                                prefix="#"
+                                hide-details
+                                single-line
+                            ></v-text-field>
+                            <v-text-field
+                                label="ts"
+                                v-model="params.ts"
+                                density="compact"
+                                type="number"
+                                suffix="s"
+                                hide-details
+                                single-line
+                                @change="update_ts"
+                            ></v-text-field>
+                        </template>
+                    </v-slider>
+                </div>
+            </div>
+        </div>
+        <script src="https://unpkg.com/@tailwindcss/browser@4.1.11/dist/index.global.js"></script>
+        <script src="https://unpkg.com/geobuf@3.0.2/dist/geobuf.js"></script>
+        <script src="https://unpkg.com/maplibre-gl@5.3.0/dist/maplibre-gl.js"></script>
+        <script src="https://unpkg.com/pbf@4.0.1/dist/pbf.js"></script>
+        <script type="importmap">
+            {
+                "imports": {
+                    "@aws-lambda-powertools/jmespath": "https://esm.sh/@aws-lambda-powertools/jmespath",
+                    "@msgpack/msgpack": "https://unpkg.com/@msgpack/msgpack@3.1.2/dist.esm/index.mjs",
+                    "@oneidentity/zstd-js/decompress": "https://unpkg.com/@oneidentity/zstd-js@1.0.3/wasm/decompress/index.js",
+                    "@vueuse/core": "https://unpkg.com/@vueuse/core@13.3.0/index.mjs",
+                    "@vueuse/shared": "https://unpkg.com/@vueuse/shared@13.3.0/index.mjs",
+                    "three": "https://unpkg.com/three@0.177.0/build/three.module.min.js",
+                    "three/addons/": "https://unpkg.com/three@0.177.0/examples/jsm/",
+                    "vue": "https://unpkg.com/vue@3.5.17/dist/vue.esm-browser.js",
+                    "vuetify": "https://unpkg.com/vuetify@3.8.0/dist/vuetify.esm.js"
+                }
+            }
+        </script>
+        <script type="module">
+            // https://vuejs.org/guide/best-practices/production-deployment
+            const dbg_code =
+                "const _this = document.querySelector('#app').__vue_app__._instance.proxy; // 调试用，vue.esm-browser.prod.js 中没有 _instance";
+            console.log(dbg_code);
+
+            import { createApp, markRaw, watch } from 'vue';
+            import { createVuetify } from 'vuetify';
+            import { useUrlSearchParams, useDebounceFn, useThrottleFn, useMagicKeys } from '@vueuse/core';
+            import { decode as msgpack_unpackb } from '@msgpack/msgpack';
+            import { search as jmespath_eval } from '@aws-lambda-powertools/jmespath';
+            import { ZstdInit, ZstdSimple, ZstdStream } from '@oneidentity/zstd-js/decompress';
+            await ZstdInit();
+            ZstdSimple.zstdFrameHeaderSizeMax = 0; // https://github.com/OneIdentity/zstd-js/issues/13
+            // three.js
+            import * as THREE from 'three';
+            import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+            import { Line2 } from 'three/addons/lines/Line2.js';
+            import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+            import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+            import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+            import * as GeometryUtils from 'three/addons/utils/GeometryUtils.js';
+
+            const min_interval_ms = 20; // 50hz
+            const vuetify = createVuetify();
+
+            const params = useUrlSearchParams('hash-params');
+            params.framespack = params.framespack || 'frames_pack.bin';
+            params.basemap = params.basemap || 'gaode_normal';
+            if (!params.basemap_opacity) {
+                params.basemap_opacity = '1.0';
+            }
+
+            // for debugging
+            window.THREE = THREE;
+            window.jmespath_eval = jmespath_eval;
+            window.msgpack_unpackb = msgpack_unpackb;
+            window.params = params;
+            // window.Pbf
+            // window.geobuf
+            window.ZstdSimple = ZstdSimple;
+            window.ZstdStream = ZstdStream;
+
+            const keys = useMagicKeys();
+
+            createApp({
+                components: {
+                    //
+                },
+                data() {
+                    return {
+                        params: params,
+                        framespack: params.framespack,
+                        ready: false,
+                        message: `loading FramesPack from ${params.framespack} ...`,
+                        //
+                        req_headers: { 'Cache-Control': 'max-age=3600' },
+                        // framespack
+                        version: null,
+                        header_length: 26,
+                        meta_length: 0,
+                        meta: null,
+                        // map
+                        mapSources: {},
+                        basemap: params.basemap,
+                        // cache
+                        frameMetaCache: markRaw({}),
+                        frameFeaturesCache: markRaw({}),
+                        framePropsCache: markRaw({}),
+                        // threejs
+                        xrange: [-20, 120],
+                        yrange: [-40, 40],
+                        frame_index: 0,
+                        frame_index_min: 0,
+                        frame_index_max: 100,
+                        pos: [0, 0],
+                        yaw: 0.0,
+                        bbox: [0, 0, 0, 0],
+                    };
+                },
+                computed: {
+                    status() {
+                        const lon = this.pos[0].toFixed(6);
+                        const lat = this.pos[1].toFixed(6);
+                        const yaw = this.yaw.toFixed(3);
+                        const bbox = this.bbox.map((v) => v.toFixed(2)).join(',');
+                        const zoom = this.map ? this.map.getZoom().toFixed(2) : '0';
+                        this.renderViewBbox();
+                        return `frame_index:${this.frame_index}, ts: ${params.ts}, pos:${lon},${lat}, zoom: ${zoom}, yaw:${yaw}, bbox:${bbox}`;
+                    },
+                },
+                watch: {
+                    frame_index: async function (newVal, oldVal) {
+                        if (!this.meta || !this.meta.frames) return;
+                        if (newVal < 0 || newVal >= this.meta.frames.length) return;
+                        if (this.frame_index_update_callback) {
+                            this.frame_index_update_callback(newVal);
+                        }
+                    },
+                },
+                methods: {
+                    async init_framespack(framespack_url) {
+                        console.log(`loading FramesPack from ${framespack_url} ...`);
+                        const req_headers = this.req_headers;
+                        const header_length = this.header_length;
+                        const response = await fetch(framespack_url, {
+                            headers: {
+                                Range: `bytes=0-${header_length - 1}`,
+                                ...req_headers,
+                            },
+                        });
+                        if (!response.ok) {
+                            console.error(
+                                `Failed to fetch framespack header: ${response.status} ${response.statusText}`,
+                            );
+                            return false;
+                        }
+                        const header_data = await response.arrayBuffer();
+                        const header = new Uint8Array(header_data);
+                        const magic = new TextDecoder().decode(header.slice(0, 10));
+                        if (magic !== 'FramesPack') {
+                            console.error(`Invalid framespack file: expected "FramesPack", got "${magic}"`);
+                            return false;
+                        }
+                        const dataView = new DataView(header_data);
+                        const version = [
+                            dataView.getInt32(10, true),
+                            dataView.getInt32(14, true),
+                            dataView.getInt32(18, true),
+                        ];
+                        this.version = version;
+                        const meta_length = dataView.getInt32(22, true);
+                        console.log(
+                            `FramesPack Header, Version: ${version[0]}.${version[1]}.${version[2]}, Meta Length: ${meta_length}`,
+                        );
+                        this.meta_length = meta_length;
+                        const meta_response = await fetch(framespack_url, {
+                            headers: {
+                                Range: `bytes=${header_length}-${header_length + meta_length - 1}`,
+                                ...req_headers,
+                            },
+                        });
+                        if (!meta_response.ok) {
+                            return false;
+                        }
+                        const meta_data = await meta_response.arrayBuffer();
+                        console.log(`Meta data size: ${meta_data.byteLength} bytes`);
+                        const decompressed = ZstdSimple.decompress(new Uint8Array(meta_data));
+                        const meta_json = msgpack_unpackb(decompressed);
+                        this.meta = meta_json;
+
+                        if (params.ts) {
+                            const ts = parseFloat(params.ts);
+                            const idx = this.meta.frames.findIndex((frame) => frame.ts === ts);
+                            if (idx >= 0) {
+                                this.frame_index = idx;
+                            }
+                        }
+                        params.ts = this.meta.frames[this.frame_index].ts.toString();
+                        this.frame_index_min = 0;
+                        this.frame_index_max = this.meta.frames.length - 1;
+                        this.pos = this.meta.frames[this.frame_index].pos;
+                        this.yaw = this.meta.frames[this.frame_index].yaw;
+                        console.log(
+                            `frame_index: ${this.frame_index}/${this.meta.frames.length}, ts: ${params.ts}, position: ${this.pos[0].toFixed(6)},${this.pos[1].toFixed(6)}, yaw: ${this.yaw.toFixed(3)}`,
+                        );
+                        return true;
+                    },
+
+                    async initMap() {
+                        const emptyStyle = {
+                            version: 8,
+                            sources: {},
+                            layers: [],
+                        };
+                        this.map = new maplibregl.Map({
+                            container: 'map',
+                            style: emptyStyle,
+                            center: [116.419181, 39.901624],
+                            zoom: 10,
+                            bearing: parseFloat(params.bearing || '0.0'),
+                            maplibreLogo: false,
+                            minZoom: 2,
+                            maxZoom: 24,
+                            // disable interaction
+                            pitchWithRotate: false,
+                            rollEnabled: false,
+                            touchPitch: false,
+                            // touchZoomRotate: false,
+                            attributionControl: false,
+                        });
+                        // console.log(JSON.stringify(this.map.getStyle()))
+
+                        this.map.on('load', () => {
+                            this.mapSources = this.initMapSources();
+                            console.log(`all basemaps: ${Object.keys(this.mapSources)}, current: ${params.basemap}`);
+                            this.updateBasemap();
+                            this.renderViewBbox();
+                        });
+                    },
+                    async initThreejs() {
+                        const container = document.getElementById('threejs');
+                        const width = container.clientWidth || container.offsetWidth;
+                        const height = container.clientHeight || container.offsetHeight;
+
+                        // Create orthographic camera
+                        const [xMin, xMax] = this.xrange;
+                        const [yMin, yMax] = this.yrange;
+                        const aspect = width / height;
+                        const viewSize = Math.max(xMax - xMin, (yMax - yMin) / aspect);
+                        // https://threejs.org/docs/#api/en/cameras/OrthographicCamera
+                        const camera = new THREE.OrthographicCamera(
+                            (-viewSize * aspect) / 2,
+                            (viewSize * aspect) / 2,
+                            viewSize / 2,
+                            -viewSize / 2,
+                            0.1,
+                            1000,
+                        );
+
+                        // Position camera at z=10, looking at origin
+                        camera.position.set(0, 0, 10);
+                        camera.up.set(1, 0, 0); // Set up vector to x-axis (so x is up)
+                        camera.lookAt(0, 0, 0);
+
+                        const scene = new THREE.Scene();
+
+                        // Process GeoJSON features
+                        const geojson = await this.frame_features(this.frame_index);
+                        this.renderGeoJsonFeatures(geojson, scene);
+
+                        const renderer = new THREE.WebGLRenderer({
+                            antialias: true,
+                            alpha: true,
+                        });
+                        renderer.setSize(width, height);
+                        renderer.setClearColor(0xffffff);
+
+                        // https://threejs.org/docs/#examples/en/controls/OrbitControls
+                        const controls = new OrbitControls(camera, renderer.domElement);
+                        controls.enableRotate = false;
+                        controls.enableDamping = true;
+                        controls.dampingFactor = 0.25;
+                        controls.screenSpacePanning = true;
+                        controls.minZoom = 0.25;
+                        controls.maxZoom = 20.0;
+                        controls.zoomToCursor = true;
+                        controls.zoomSpeed = 10.0;
+                        controls.panSpeed = 1.0;
+                        controls.enableZoom = true;
+                        controls.touches = {
+                            ONE: THREE.TOUCH.PAN,
+                            TWO: THREE.TOUCH.DOLLY_PAN,
+                        };
+                        controls.mouseButtons = {
+                            LEFT: THREE.MOUSE.PAN,
+                            MIDDLE: THREE.MOUSE.DOLLY,
+                            RIGHT: THREE.MOUSE.PAN,
+                        };
+                        controls.enableDirectPanning = true;
+                        const originalPan = controls.pan;
+                        controls.pan = function (deltaX, deltaY) {
+                            const factor = 1 / this.object.zoom;
+                            originalPan.call(this, deltaX * factor, deltaY * factor);
+                        };
+
+                        // Save object references
+                        this.renderer = renderer;
+                        this.scene = scene;
+                        this.camera = camera;
+                        this.controls = controls;
+                        this.raycaster = new THREE.Raycaster();
+                        this.pointer = new THREE.Vector2();
+
+                        if (params.camera) {
+                            try {
+                                const [x, y, zoom] = params.camera.split(',');
+                                this.setCameraState(parseFloat(x), parseFloat(y), parseFloat(zoom));
+                            } catch (error) {}
+                        }
+
+                        renderer.domElement.addEventListener('click', (event) => this.onThreeJsClick(event));
+                        container.appendChild(renderer.domElement);
+                        window.addEventListener('resize', () => this.onWindowResize());
+                        const updateParamsCamera = useDebounceFn(
+                            (e) => {
+                                // https://kettanaito.com/blog/debounce-vs-throttle
+                                const camera = this.camera;
+                                const x = Number(camera.position.x.toFixed(2)).toString();
+                                const y = Number(camera.position.y.toFixed(2)).toString();
+                                const zoom = Number(camera.zoom.toFixed(4)).toString();
+                                const val = `${x},${y},${zoom}`;
+                                params.camera = val;
+                            },
+                            Math.max(min_interval_ms, 200),
+                        );
+                        const updateBbox = useThrottleFn((e) => {
+                            const camera = this.camera;
+                            const dy = (camera.right - camera.left) / 2.0 / camera.zoom;
+                            const dx = (camera.top - camera.bottom) / 2.0 / camera.zoom;
+                            const height = this.renderer.domElement.height;
+                            const xmin = camera.position.x - dx;
+                            const xmax = camera.position.x + dx;
+                            const ymin = camera.position.y - dy;
+                            const ymax = camera.position.y + dy;
+                            this.bbox = [xmin, ymin, xmax, ymax];
+                        }, min_interval_ms);
+                        controls.addEventListener('change', (e) => {
+                            updateParamsCamera(e);
+                            updateBbox(e);
+                        });
+                        updateParamsCamera();
+                        updateBbox();
+
+                        // Start animation loop
+                        const animate = () => {
+                            requestAnimationFrame(animate);
+                            this.animate();
+                        };
+                        animate();
+                    },
+                    update_ts(event) {
+                        const ts = parseFloat(event.target.value);
+                        const idx = this.meta.frames.findIndex((frame) => frame.ts === ts);
+                        if (idx >= 0) {
+                            this.frame_index = idx;
+                        }
+                    },
+
+                    renderGeoJsonFeatures(geojson, scene) {
+                        if (!geojson || !geojson.features || !scene) return;
+                        scene.clear();
+                        scene.background = new THREE.Color(0xffffff);
+                        // https://threejs.org/docs/#api/en/helpers/GridHelper
+                        const gridHelper = new THREE.GridHelper(240, 24);
+                        gridHelper.rotation.x = Math.PI / 2;
+                        scene.add(gridHelper);
+                        // Add axes helper
+                        const axesHelper = new THREE.AxesHelper(10);
+                        axesHelper.position.set(0, 0, 1);
+                        scene.add(axesHelper);
+
+                        geojson.features.forEach((feature, index) => {
+                            if (!feature.geometry) return;
+
+                            const { type, coordinates } = feature.geometry;
+                            const props = feature.properties || {};
+                            let object;
+
+                            if (type === 'LineString') {
+                                object = this.createLine2(coordinates, props, scene);
+                            } else if (type === 'MultiLineString') {
+                                object = new THREE.Group();
+                                coordinates.forEach((lineCoords) => {
+                                    const line = this.createLine2(lineCoords, props, scene);
+                                    if (line) object.add(line);
+                                });
+                                scene.add(object);
+                            } else if (type === 'Point') {
+                                object = this.createPoint(coordinates, props, scene);
+                            }
+                            if (!object) {
+                                return;
+                            }
+                            object.userData = {
+                                frame_index: this.frame_index,
+                                feature_index: index,
+                                feature: feature,
+                            };
+                        });
+                    },
+                    renderViewBbox() {
+                        if (!this.map) {
+                            return;
+                        }
+                        if (!this.map || !this.map.loaded()) {
+                            return;
+                        }
+                        const [xmin, ymin, xmax, ymax] = this.bbox;
+                        const ego_coords = [
+                            [xmin, ymin],
+                            [xmax, ymin],
+                            [xmax, ymax],
+                            [xmin, ymax],
+                            [xmin, ymin],
+                            [0, 0],
+                            [10, 0],
+                            [0, 10],
+                        ];
+                        const wgs84_coords = this.car2wgs84(ego_coords, this.pos[0], this.pos[1], this.yaw);
+                        const coords = wgs84_coords.slice(0, 5);
+                        const [center, x, y] = wgs84_coords.slice(5, 8);
+
+                        const map = this.map;
+                        const view_bbox = map.getSource('view_bbox');
+                        if (view_bbox) {
+                            this.view_bbox_data.features[0].geometry.coordinates = [coords];
+                            this.view_bbox_data.features[1].geometry.coordinates = [center, x];
+                            this.view_bbox_data.features[2].geometry.coordinates = [center, y];
+                            view_bbox.setData(this.view_bbox_data);
+                            map.flyTo({ center: center });
+                            return;
+                        }
+
+                        this.view_bbox_data = {
+                            type: 'FeatureCollection',
+                            features: [
+                                {
+                                    type: 'Feature',
+                                    geometry: {
+                                        type: 'Polygon',
+                                        coordinates: [coords],
+                                    },
+                                },
+                                {
+                                    type: 'Feature',
+                                    geometry: {
+                                        type: 'LineString',
+                                        coordinates: [center, x],
+                                    },
+                                    properties: {
+                                        stroke: '#ff0000',
+                                    },
+                                },
+                                {
+                                    type: 'Feature',
+                                    geometry: {
+                                        type: 'LineString',
+                                        coordinates: [center, y],
+                                    },
+                                    properties: {
+                                        stroke: '#00ff00',
+                                    },
+                                },
+                            ],
+                        };
+                        map.addSource('view_bbox', {
+                            type: 'geojson',
+                            data: this.view_bbox_data,
+                        });
+                        map.addLayer({
+                            id: 'view_bbox',
+                            type: 'fill',
+                            source: 'view_bbox',
+                            filter: ['==', ['geometry-type'], 'Polygon'],
+                            paint: {
+                                'fill-color': 'yellow',
+                                'fill-opacity': 0.4,
+                            },
+                        });
+                        map.addLayer({
+                            id: 'view_bbox_xy',
+                            type: 'line',
+                            source: 'view_bbox',
+                            filter: ['==', ['geometry-type'], 'LineString'],
+                            paint: {
+                                'line-color': ['get', 'stroke'],
+                                'line-width': 2,
+                            },
+                        });
+                        map.flyTo({ center: center, zoom: 16, bearing: 0 });
+                    },
+
+                    normalize_color(stroke, fallback = 0xff0000) {
+                        if (!stroke) return fallback;
+                        if (typeof stroke !== 'string') return stroke;
+                        try {
+                            if (stroke[0] === '#') {
+                                return parseInt(stroke.substring(1), 16);
+                            } else if (stroke[0] == '0' && stroke[1] == 'x') {
+                                return parseInt(stroke.substring(2), 16);
+                            } else if (stroke.startsWith('rgb(') && stroke.endsWith(')')) {
+                                const [r, g, b] = stroke.slice(4, -1).split(',').map(Number);
+                                return (r << 16) | (g << 8) | b;
+                            } else {
+                                return fallback;
+                            }
+                        } catch (error) {
+                            return fallback;
+                        }
+                    },
+
+                    onThreeJsClick(event) {
+                        if (!this.raycaster || !this.scene || !this.camera) return;
+                        const container = document.getElementById('threejs');
+                        const rect = container.getBoundingClientRect();
+                        this.pointer.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
+                        this.pointer.y = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+                        this.raycaster.setFromCamera(this.pointer, this.camera);
+                        const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+                        if (intersects.length > 0) {
+                            for (const intersect of intersects) {
+                                let object = intersect.object;
+                                while (object && !object.userData.feature && object.parent) {
+                                    object = object.parent;
+                                }
+                                if (object && object.userData.feature !== undefined) {
+                                    console.log('Clicked on feature:', object.userData);
+                                    return;
+                                }
+                            }
+                        }
+                    },
+
+                    createLine2(coordinates, properties, scene) {
+                        if (!coordinates || coordinates.length < 2) return null;
+
+                        const positions = [];
+                        for (const point of coordinates) {
+                            const [x, y] = point;
+                            positions.push(x, y, 0);
+                        }
+
+                        const geometry = new LineGeometry();
+                        geometry.setPositions(positions);
+
+                        // https://threejs.org/docs/#examples/en/lines/LineMaterial
+                        const material = new LineMaterial({
+                            color: this.normalize_color(properties.stroke),
+                            linewidth: 2.0,
+                            dashed: false,
+                        });
+
+                        const line = new Line2(geometry, material);
+                        scene.add(line);
+                        return line;
+                    },
+
+                    createPoint(coordinates, properties, scene) {
+                        if (!coordinates || coordinates.length < 2) return null;
+
+                        const [x, y] = coordinates;
+
+                        // Create a circle with 1m radius
+                        const radius = 1.0;
+                        const segments = 32;
+                        const geometry = new THREE.CircleGeometry(radius, segments);
+                        const material = new THREE.MeshBasicMaterial({
+                            color: this.normalize_color(properties.stroke),
+                            side: THREE.DoubleSide,
+                        });
+
+                        const circle = new THREE.Mesh(geometry, material);
+                        circle.position.set(x, y, 0);
+                        circle.rotation.x = -Math.PI / 2;
+
+                        scene.add(circle);
+                        return circle;
+                    },
+
+                    onWindowResize() {
+                        if (!this.renderer || !this.scene || !this.camera) return;
+
+                        const container = document.getElementById('threejs');
+                        const width = container.clientWidth || container.offsetWidth;
+                        const height = container.clientHeight || container.offsetHeight;
+                        this.threejs_window_size = [width, height];
+                        // Update orthographic camera with preserved aspect ratio
+                        const [xMin, xMax] = this.xrange;
+                        const [yMin, yMax] = this.yrange;
+                        const aspect = width / height;
+                        const viewSize = Math.max(xMax - xMin, (yMax - yMin) / aspect);
+                        this.camera.left = (-viewSize * aspect) / 2;
+                        this.camera.right = (viewSize * aspect) / 2;
+                        this.camera.top = viewSize / 2;
+                        this.camera.bottom = -viewSize / 2;
+                        this.camera.updateProjectionMatrix();
+                        this.renderer.setSize(width, height);
+
+                        // Update line widths
+                        this.scene.traverse((object) => {
+                            if (object.isLine2) {
+                                object.material.resolution.set(width, height);
+                            }
+                        });
+                        this.animate();
+                    },
+
+                    animate() {
+                        // Static rendering, no animation
+                        if (this.renderer && this.scene && this.camera) {
+                            if (this.controls) this.controls.update();
+                            this.renderer.render(this.scene, this.camera);
+                        }
+                    },
+
+                    initMapSources() {
+                        // OSM source
+                        const mapSources = {};
+                        mapSources.osm = {
+                            type: 'raster',
+                            tiles: [
+                                'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            ],
+                            tileSize: 256,
+                            maxzoom: 18,
+                            attribution: '© OpenStreetMap contributors',
+                        };
+
+                        // Satellite source
+                        mapSources.satellite = {
+                            type: 'raster',
+                            tiles: [
+                                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                            ],
+                            tileSize: 256,
+                            maxzoom: 18,
+                            attribution:
+                                'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+                        };
+
+                        const gaodeNormalUrl = this.buildGaodeUrl('7');
+                        mapSources.gaode_normal = {
+                            type: 'raster',
+                            tiles: [
+                                gaodeNormalUrl.replace('{s}', '1'),
+                                gaodeNormalUrl.replace('{s}', '2'),
+                                gaodeNormalUrl.replace('{s}', '3'),
+                                gaodeNormalUrl.replace('{s}', '4'),
+                            ],
+                            tileSize: 256,
+                            maxzoom: 18,
+                            attribution: '&copy; 高德/Gaode/AutoNavi',
+                        };
+
+                        // Satellite map from Gaode
+                        const gaodeSatelliteUrl = this.buildGaodeUrl('6');
+                        mapSources.gaode_satellite = {
+                            type: 'raster',
+                            tiles: [
+                                gaodeSatelliteUrl.replace('{s}', '1'),
+                                gaodeSatelliteUrl.replace('{s}', '2'),
+                                gaodeSatelliteUrl.replace('{s}', '3'),
+                                gaodeSatelliteUrl.replace('{s}', '4'),
+                            ],
+                            maxzoom: 18,
+                            tileSize: 256,
+                            attribution: '&copy; Gaode/AutoNavi',
+                        };
+                        return mapSources;
+                    },
+
+                    buildGaodeUrl(style) {
+                        return `http://wprd0{s}.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=${style}`;
+                    },
+
+                    updateBasemap() {
+                        if (this.map.getLayer('base-layer')) {
+                            this.map.removeLayer('base-layer');
+                        }
+                        if (this.map.getSource('base-source')) {
+                            this.map.removeSource('base-source');
+                        }
+                        this.map.addSource('base-source', this.mapSources[this.basemap]);
+                        this.map.addLayer({
+                            id: 'base-layer',
+                            type: 'raster',
+                            source: 'base-source',
+                            paint: {
+                                'raster-opacity': parseFloat(params.basemap_opacity),
+                            },
+                        });
+                    },
+                    async frame_meta(index) {
+                        if (this.frameMetaCache[index] !== undefined) {
+                            return this.frameMetaCache[index];
+                        }
+                        const data = await this.__decode_frame_meta(index);
+                        this.frameMetaCache[index] = data;
+                        return data;
+                    },
+                    async frame_features(index) {
+                        if (this.frameFeaturesCache[index] !== undefined) {
+                            return this.frameFeaturesCache[index];
+                        }
+                        const data = await this.__decode_frame_features(index);
+                        this.frameFeaturesCache[index] = data;
+                        return data;
+                    },
+                    async frame_props(index) {
+                        if (this.framePropsCache[index] !== undefined) {
+                            return this.framePropsCache[index];
+                        }
+                        const data = await this.__decode_frame_props(index);
+                        this.framePropsCache[index] = data;
+                        return data;
+                    },
+                    async __decode_frame_meta(index) {
+                        const frame = this.meta.frames[index];
+                        const begin = this.header_length + this.meta_length + frame.offset;
+                        const end = begin + frame.lengths[0] - 1;
+                        const response = await fetch(this.framespack, {
+                            headers: { Range: `bytes=${begin}-${end}`, ...this.req_headers },
+                        });
+                        if (!response.ok) {
+                            console.error(
+                                `Failed to fetch frame (#${index}) meta: ${response.status} ${response.statusText}`,
+                            );
+                            return false;
+                        }
+                        const bytes = await response.arrayBuffer();
+                        const decompressed = ZstdSimple.decompress(new Uint8Array(bytes));
+                        const json = msgpack_unpackb(decompressed);
+                        // console.log("meta", json);
+                        return json;
+                    },
+                    async __decode_frame_features(index) {
+                        const frame = this.meta.frames[index];
+                        const [frame_meta_len, frame_features_len, frame_props_len] = frame.lengths;
+                        const begin = this.header_length + this.meta_length + frame.offset + frame_meta_len;
+                        const end = begin + frame_features_len - 1;
+                        const response = await fetch(this.framespack, {
+                            headers: { Range: `bytes=${begin}-${end}`, ...this.req_headers },
+                        });
+                        if (!response.ok) {
+                            console.error(
+                                `Failed to fetch frame (#${index}) meta: ${response.status} ${response.statusText}`,
+                            );
+                            return false;
+                        }
+                        const bytes = await response.arrayBuffer();
+                        const decompressed = ZstdSimple.decompress(new Uint8Array(bytes));
+                        const geojson = geobuf.decode(new Pbf(decompressed));
+                        // console.log("features", geojson);
+                        return geojson;
+                    },
+                    async __decode_frame_props(index) {
+                        const frame = this.meta.frames[index];
+                        const [frame_meta_len, frame_features_len, frame_props_len] = frame.lengths;
+                        const begin =
+                            this.header_length + this.meta_length + frame.offset + frame_meta_len + frame_features_len;
+                        const end = begin + frame_props_len - 1;
+                        const response = await fetch(this.framespack, {
+                            headers: { Range: `bytes=${begin}-${end}`, ...this.req_headers },
+                        });
+                        if (!response.ok) {
+                            console.error(
+                                `Failed to fetch frame (#${index}) meta: ${response.status} ${response.statusText}`,
+                            );
+                            return false;
+                        }
+                        const bytes = await response.arrayBuffer();
+                        const decompressed = ZstdSimple.decompress(new Uint8Array(bytes));
+                        const json = msgpack_unpackb(decompressed);
+                        // console.log("props", json);
+                        return json;
+                    },
+                    setCameraState(x, y, zoom) {
+                        if (!this.camera || !this.controls) return;
+                        const z = this.camera.position.z;
+                        this.camera.position.set(x, y, z);
+                        this.camera.zoom = zoom;
+                        this.camera.updateProjectionMatrix();
+                        this.controls.target.set(x, y, 0);
+                        this.controls.update();
+                    },
+
+                    cheap_ruler_k(latitude) {
+                        const RE = 6378.137;
+                        const FE = 1.0 / 298.257223563;
+                        const E2 = FE * (2 - FE);
+                        const RAD = Math.PI / 180.0;
+                        const MUL = RAD * RE * 1000.0;
+                        const coslat = Math.cos(latitude * RAD);
+                        const w2 = 1 / (1 - E2 * (1 - coslat * coslat));
+                        const w = Math.sqrt(w2);
+                        return [MUL * w * coslat, MUL * w * w2 * (1 - E2)];
+                    },
+                    car2wgs84(coords, lon, lat, yaw) {
+                        const k = this.cheap_ruler_k(lat);
+                        const k_lon = 1.0 / k[0];
+                        const k_lat = 1.0 / k[1];
+                        const cos = Math.cos(yaw);
+                        const sin = Math.sin(yaw);
+                        /*
+                             | cos, -sin |   @ x
+                             | sin,  cos |     y
+                         */
+                        const wgs84 = coords.map(([x, y]) => [
+                            (cos * x - sin * y) * k_lon + lon,
+                            (sin * x + cos * y) * k_lat + lat,
+                        ]);
+                        return wgs84;
+                    },
+                },
+                async mounted() {
+                    this.ready = false;
+                    try {
+                        this.ready = await this.init_framespack(this.framespack);
+                        if (!this.ready) {
+                            this.message = 'error: failed to load framespack';
+                            return;
+                        }
+                        this.$nextTick(async () => {
+                            await this.initThreejs();
+                            await this.initMap();
+                            const waitForMapLoad = async () => {
+                                while (!this.map.loaded()) {
+                                    await new Promise((resolve) => setTimeout(resolve, 20));
+                                }
+                                this.renderViewBbox();
+                            };
+                            waitForMapLoad();
+
+                            this.updateParamsTs = useDebounceFn(
+                                (ts) => {
+                                    params.ts = ts;
+                                },
+                                Math.max(min_interval_ms, 200),
+                            );
+                            this.frame_index_update_callback = useThrottleFn(async (idx) => {
+                                this.updateParamsTs(this.meta.frames[idx].ts.toString());
+                                this.pos = this.meta.frames[idx].pos;
+                                this.yaw = this.meta.frames[idx].yaw;
+                                const geojson = await this.frame_features(idx);
+                                this.renderGeoJsonFeatures(geojson, this.scene);
+                                this.renderViewBbox();
+                            }, min_interval_ms);
+                        });
+
+                        let keyInterval = null;
+                        let keyTimeout = null;
+                        const updateFrameRate = min_interval_ms;
+                        const handleArrowKeys = () => {
+                            if (keys.ArrowLeft.value) {
+                                this.frame_index = Math.max(this.frame_index - 1, this.frame_index_min);
+                            } else if (keys.ArrowRight.value) {
+                                this.frame_index = Math.min(this.frame_index + 1, this.frame_index_max);
+                            }
+                        };
+                        watch([keys.ArrowLeft, keys.ArrowRight], ([left, right], [prevLeft, prevRight]) => {
+                            if ((left || right) && !keyInterval && !keyTimeout) {
+                                handleArrowKeys();
+                                keyTimeout = setTimeout(() => {
+                                    keyInterval = setInterval(handleArrowKeys, updateFrameRate);
+                                    keyTimeout = null;
+                                }, 100);
+                            } else if (!left && !right) {
+                                if (keyInterval) {
+                                    clearInterval(keyInterval);
+                                    keyInterval = null;
+                                }
+                                if (keyTimeout) {
+                                    clearTimeout(keyTimeout);
+                                    keyTimeout = null;
+                                }
+                            }
+                        });
+                    } catch (error) {
+                        this.message = `error: ${error}`;
+                        return;
+                    }
+                },
+                errorCaptured(err, instance, info) {
+                    console.error('Vue error:', err, info);
+                    return false;
+                },
+            })
+                .use(vuetify)
+                .mount('#app');
+        </script>
+    </body>
+</html>
