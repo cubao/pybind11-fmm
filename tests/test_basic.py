@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import fmmpy
-from fmmpy import add
+import pybind11_fmm
+from pybind11_fmm import add
 
 
 def test_add():
@@ -9,4 +9,4 @@ def test_add():
 
 
 def test_dummy():
-    fmmpy.test_eigen()
+    pybind11_fmm.test_eigen()

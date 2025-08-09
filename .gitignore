@@ -143,3 +143,4 @@ cython_debug/
 _skbuild/
 .pyodide-xbuildenv/
 *.swp
+.ruff_cache

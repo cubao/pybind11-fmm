@@ -36,4 +36,4 @@ target_include_directories(_core PRIVATE src/3rdparty)
 
 target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
-install(TARGETS _core DESTINATION fmmpy)
+install(TARGETS _core DESTINATION pybind11_fmm)
