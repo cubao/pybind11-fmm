@@ -29,7 +29,7 @@ endif()
 find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 find_package(pybind11 CONFIG REQUIRED)
 
-file(GLOB SRCS src/*.cpp)
+file(GLOB SRCS src/*.cpp src/fmm/*.cpp)
 python_add_library(_core MODULE ${SRCS} WITH_SOABI)
 target_link_libraries(_core PRIVATE pybind11::headers)
 target_include_directories(_core PRIVATE src/3rdparty)

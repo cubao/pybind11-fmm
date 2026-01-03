@@ -1,9 +1,42 @@
 #pragma once
 
+#include "graph.hpp"
+#include "types.hpp"
+#include "3rdparty/packedrtree.hpp"
+
 namespace cubao {
-struct Network {
-    // https://github.com/cubao/geobuf-cpp/blob/87bbca2bea03bac8395bfa9c956b0691fb964fb0/src/geobuf/planet.hpp
-    // https://github.com/cubao/fast-crossing/blob/8a4b93d7bda78194f8b308177d4cb6f1d8a55623/src/fast_crossing.hpp
-    struct RTree;
+
+struct ProjectedPoint {
+    int64_t edge_id;
+    double offset;
+    double distance;
+    Eigen::Vector2d point;
 };
-}  // namespace cubao
+
+struct Network {
+    using RTree = FlatGeobuf::PackedRTree;
+    DiGraph graph;
+    unordered_map<int64_t, Polyline> geometries;
+
+    void add_edge(int64_t edge_id, const Eigen::Ref<const RowVectors> &coords,
+                  bool is_wgs84 = true) {
+        geometries.emplace(edge_id, Polyline(coords, is_wgs84));
+    }
+
+    const Polyline &geometry(int64_t edge_id) const {
+        return geometries.at(edge_id);
+    }
+
+    std::vector<ProjectedPoint> query_radius(const Eigen::Vector2d &pt,
+                                             double radius) const;
+
+    Path shortest_path(int64_t from_edge, double from_offset, int64_t to_edge,
+                       double to_offset) const;
+
+  private:
+    void build_spatial_index() const;
+    mutable std::optional<RTree> spatial_index_;
+    mutable std::vector<int64_t> edge_ids_;  // Mapping: rtree index → edge ID
+};
+
+} // namespace cubao
