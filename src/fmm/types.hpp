@@ -17,25 +17,25 @@ struct Config {
 
 // Candidate point (from topo_graph/fmm/transition_graph.py:Candidate)
 struct Candidate {
-    int64_t edge_id;
-    double offset;          // Distance along edge
-    double distance;        // Perpendicular distance to GPS point
-    Eigen::Vector2d point;  // Projected point coordinates
+    int64_t edge_id = 0;
+    double offset = 0.0;                              // Distance along edge
+    double distance = 0.0;                            // Perpendicular distance to GPS point
+    Eigen::Vector2d point = Eigen::Vector2d::Zero();  // Projected point coordinates
 };
 
 // Matched result for single GPS point
 struct MatchedCandidate {
-    int64_t edge_id;
-    double offset;
-    double probability;
+    int64_t edge_id = 0;
+    double offset = 0.0;
+    double probability = 0.0;
 };
 
 // Final matching result (from topo_graph/fmm/mm_type.py:MatchResult)
 struct MatchResult {
-    std::vector<MatchedCandidate> matched_points;  // One per GPS point
-    std::vector<int64_t> optimal_path;             // Edge IDs of matched path
-    double score;                                  // Log probability
-    bool success;
+    std::vector<MatchedCandidate> matched_points;             // One per GPS point
+    std::vector<int64_t> optimal_path;                        // Edge IDs of matched path
+    double score = -std::numeric_limits<double>::infinity();  // Log probability
+    bool success = false;
 };
 
 }  // namespace fmm

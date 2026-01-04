@@ -59,12 +59,12 @@ MatchResult match_trajectory(const Network& network, const RowVectors& trajector
                              const std::vector<std::vector<Candidate>>& candidates, const Config& config) {
     const int N = trajectory.rows();
     if (N == 0 || candidates.empty()) {
-        return {.success = false, .score = -std::numeric_limits<double>::infinity()};
+        return {};
     }
 
     // Check if first layer has candidates
     if (candidates[0].empty()) {
-        return {.success = false, .score = -std::numeric_limits<double>::infinity()};
+        return {};
     }
 
     // Build transition graph (HMM trellis)
@@ -149,7 +149,7 @@ MatchResult match_trajectory(const Network& network, const RowVectors& trajector
     }
 
     if (!best_node) {
-        return {.success = false, .score = -std::numeric_limits<double>::infinity()};
+        return {};
     }
 
     // Backtrack to construct result
