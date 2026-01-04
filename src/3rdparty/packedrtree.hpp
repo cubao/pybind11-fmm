@@ -44,6 +44,7 @@
 #include <map>
 #include <memory>
 #include <numeric>
+#include <stdexcept>
 #include <unordered_map>
 #include <vector>
 
