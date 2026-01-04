@@ -144,3 +144,4 @@ _skbuild/
 .pyodide-xbuildenv/
 *.swp
 .ruff_cache
+stubs/pybind11-fmm-stubs

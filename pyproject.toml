@@ -93,3 +93,4 @@ isort.required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["T20"]
+"**/*.pyi" = ["ICN001"]  # Allow non-standard imports in stub files (auto-generated)

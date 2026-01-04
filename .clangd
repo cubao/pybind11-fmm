@@ -2,3 +2,5 @@ InlayHints:
   Enabled: No
   ParameterNames: No
   DeducedTypes: No
+Diagnostics:
+  UnusedIncludes: None
