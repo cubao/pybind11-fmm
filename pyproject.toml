@@ -12,7 +12,7 @@ authors = [
   { name = "district10", email = "dvorak4tzx@gmail.com" },
 ]
 dependencies = [
-  "fire",
+  "numpy",
 ]
 requires-python = ">=3.7"
 classifiers = [
