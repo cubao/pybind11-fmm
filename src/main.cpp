@@ -51,12 +51,10 @@ PYBIND11_MODULE(_core, m) {
     // Network
     py::class_<Network>(m, "Network")
         .def(py::init<>())
-        .def("add_edge", &Network::add_edge, py::arg("edge_id"), py::arg("coords"), py::arg("is_wgs84") = true,
-             "Add an edge to the network")
-        .def("geometry", &Network::geometry, py::arg("edge_id"), py::return_value_policy::reference_internal,
+        .def("add_edge", &Network::add_edge, "edge_id"_a, "coords"_a, "is_wgs84"_a = true, "Add an edge to the network")
+        .def("geometry", &Network::geometry, "edge_id"_a, py::return_value_policy::reference_internal,
              "Get the geometry of an edge")
-        .def("query_radius", &Network::query_radius, py::arg("pt"), py::arg("radius"),
-             "Query edges within radius of a point");
+        .def("query_radius", &Network::query_radius, "pt"_a, "radius"_a, "Query edges within radius of a point");
 
     // FMM submodule
     auto fmm = m.def_submodule("fmm", "Fast Map Matching");
@@ -91,11 +89,11 @@ PYBIND11_MODULE(_core, m) {
         .def_readwrite("success", &fmm::MatchResult::success);
 
     // FMM functions
-    fmm.def("search_candidates", &fmm::search_candidates, py::arg("network"), py::arg("trajectory"), py::arg("config"),
+    fmm.def("search_candidates", &fmm::search_candidates, "network"_a, "trajectory"_a, "config"_a,
             "Search for candidate road segments for each GPS point");
 
-    fmm.def("match_trajectory", &fmm::match_trajectory, py::arg("network"), py::arg("trajectory"),
-            py::arg("candidates"), py::arg("config"), "Match GPS trajectory to road network using HMM");
+    fmm.def("match_trajectory", &fmm::match_trajectory, "network"_a, "trajectory"_a, "candidates"_a, "config"_a,
+            "Match GPS trajectory to road network using HMM");
 
 #ifdef VERSION_INFO
     m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
