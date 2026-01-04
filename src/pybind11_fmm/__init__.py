@@ -7,6 +7,7 @@ algorithm for matching GPS trajectories to road networks.
 from __future__ import annotations
 
 import numpy as np
+
 from ._core import Network, ProjectedPoint, fmm
 
 __all__ = [
@@ -124,28 +125,22 @@ class FastMapMatch:
         # Validate input
         trajectory = np.asarray(trajectory, dtype=np.float64)
         if trajectory.ndim != 2 or trajectory.shape[1] != 2:
-            raise ValueError(f"Trajectory must be Nx2 array, got shape {trajectory.shape}")
+            msg = f"Trajectory must be Nx2 array, got shape {trajectory.shape}"
+            raise ValueError(msg)
 
         if len(trajectory) == 0:
             # Return empty result for empty trajectory
             result = fmm.MatchResult()
             result.success = False
-            result.score = float('-inf')
+            result.score = float("-inf")
             return result
 
         # Candidate search
         candidates = fmm.search_candidates(
-            self.network,
-            trajectory,
-            self.config._config
+            self.network, trajectory, self.config._config
         )
 
         # HMM matching
-        result = fmm.match_trajectory(
-            self.network,
-            trajectory,
-            candidates,
-            self.config._config
+        return fmm.match_trajectory(
+            self.network, trajectory, candidates, self.config._config
         )
-
-        return result

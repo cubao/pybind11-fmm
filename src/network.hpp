@@ -1,8 +1,8 @@
 #pragma once
 
+#include "3rdparty/packedrtree.hpp"
 #include "graph.hpp"
 #include "types.hpp"
-#include "3rdparty/packedrtree.hpp"
 
 namespace cubao {
 
@@ -18,20 +18,15 @@ struct Network {
     DiGraph graph;
     unordered_map<int64_t, Polyline> geometries;
 
-    void add_edge(int64_t edge_id, const Eigen::Ref<const RowVectors> &coords,
-                  bool is_wgs84 = true) {
+    void add_edge(int64_t edge_id, const Eigen::Ref<const RowVectors> &coords, bool is_wgs84 = true) {
         geometries.emplace(edge_id, Polyline(coords, is_wgs84));
     }
 
-    const Polyline &geometry(int64_t edge_id) const {
-        return geometries.at(edge_id);
-    }
+    const Polyline &geometry(int64_t edge_id) const { return geometries.at(edge_id); }
 
-    std::vector<ProjectedPoint> query_radius(const Eigen::Vector2d &pt,
-                                             double radius) const;
+    std::vector<ProjectedPoint> query_radius(const Eigen::Vector2d &pt, double radius) const;
 
-    Path shortest_path(int64_t from_edge, double from_offset, int64_t to_edge,
-                       double to_offset) const;
+    Path shortest_path(int64_t from_edge, double from_offset, int64_t to_edge, double to_offset) const;
 
   private:
     void build_spatial_index() const;
@@ -39,4 +34,4 @@ struct Network {
     mutable std::vector<int64_t> edge_ids_;  // Mapping: rtree index → edge ID
 };
 
-} // namespace cubao
+}  // namespace cubao

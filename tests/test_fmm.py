@@ -1,8 +1,11 @@
 """Test Fast Map Matching functionality."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
-from pybind11_fmm import Network, FastMapMatch, FastMapMatchConfig
+
+from pybind11_fmm import FastMapMatch, FastMapMatchConfig, Network
 
 
 def test_network_creation():
@@ -44,13 +47,9 @@ def test_basic_matching():
     network.add_edge(1, np.array([[0.0, 0.0], [10.0, 0.0]]), is_wgs84=False)
 
     # Create trajectory along the road with some noise
-    trajectory = np.array([
-        [1.0, 0.1],
-        [3.0, -0.1],
-        [5.0, 0.05],
-        [7.0, -0.05],
-        [9.0, 0.1]
-    ])
+    trajectory = np.array(
+        [[1.0, 0.1], [3.0, -0.1], [5.0, 0.05], [7.0, -0.05], [9.0, 0.1]]
+    )
 
     # Match trajectory
     fmm = FastMapMatch(network)
@@ -76,10 +75,7 @@ def test_empty_trajectory():
 def test_config():
     """Test configuration parameters."""
     config = FastMapMatchConfig(
-        k=10,
-        radius=100.0,
-        gps_error=20.0,
-        reverse_tolerance=0.0
+        k=10, radius=100.0, gps_error=20.0, reverse_tolerance=0.0
     )
 
     assert config.k == 10
@@ -101,13 +97,15 @@ def test_two_edge_network():
     network.add_edge(2, np.array([[5.0, 0.0], [5.0, 5.0]]), is_wgs84=False)
 
     # Trajectory that follows the L-shape
-    trajectory = np.array([
-        [1.0, 0.1],
-        [3.0, -0.1],
-        [4.9, 0.1],  # Near junction
-        [5.0, 2.0],
-        [5.1, 4.0]
-    ])
+    trajectory = np.array(
+        [
+            [1.0, 0.1],
+            [3.0, -0.1],
+            [4.9, 0.1],  # Near junction
+            [5.0, 2.0],
+            [5.1, 4.0],
+        ]
+    )
 
     fmm = FastMapMatch(network)
     result = fmm.match_traj(trajectory)

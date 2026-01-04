@@ -1,4 +1,5 @@
 #include "fmm.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -7,11 +8,8 @@ namespace cubao {
 namespace fmm {
 
 // From topo_graph/fmm/fmm_algo.py:search_tr_cs_knn (line 527-556)
-std::vector<std::vector<Candidate>> search_candidates(
-    const Network& network,
-    const RowVectors& trajectory,
-    const Config& config
-) {
+std::vector<std::vector<Candidate>> search_candidates(const Network& network, const RowVectors& trajectory,
+                                                      const Config& config) {
     std::vector<std::vector<Candidate>> all_candidates;
     all_candidates.reserve(trajectory.rows());
 
@@ -44,9 +42,7 @@ std::vector<std::vector<Candidate>> search_candidates(
 
 // Helper: Emission probability (Gaussian)
 // From topo_graph/fmm/transition_graph.py:calc_ep (line 172-178)
-double calc_emission_prob(double dist, double gps_error) {
-    return std::exp(-0.5 * std::pow(dist / gps_error, 2));
-}
+double calc_emission_prob(double dist, double gps_error) { return std::exp(-0.5 * std::pow(dist / gps_error, 2)); }
 
 // Helper: Transition probability
 // From topo_graph/fmm/transition_graph.py:calc_tp (line 164-170)
@@ -59,12 +55,8 @@ double calc_transition_prob(double eu_dist, double sp_dist) {
 
 // From topo_graph/fmm/fmm_algo.py:_update_tg (line 639-746)
 // and topo_graph/fmm/transition_graph.py:backtrack (line 180-196)
-MatchResult match_trajectory(
-    const Network& network,
-    const RowVectors& trajectory,
-    const std::vector<std::vector<Candidate>>& candidates,
-    const Config& config
-) {
+MatchResult match_trajectory(const Network& network, const RowVectors& trajectory,
+                             const std::vector<std::vector<Candidate>>& candidates, const Config& config) {
     const int N = trajectory.rows();
     if (N == 0 || candidates.empty()) {
         return {.success = false, .score = -std::numeric_limits<double>::infinity()};
@@ -78,10 +70,10 @@ MatchResult match_trajectory(
     // Build transition graph (HMM trellis)
     // Each node represents a candidate at a specific GPS point
     struct TGNode {
-        int layer;                    // GPS point index
-        int candidate_idx;            // Index in candidates[layer]
-        double cum_prob;              // Cumulative log probability
-        TGNode* prev;                 // Backpointer for Viterbi (nullptr for first layer)
+        int layer;          // GPS point index
+        int candidate_idx;  // Index in candidates[layer]
+        double cum_prob;    // Cumulative log probability
+        TGNode* prev;       // Backpointer for Viterbi (nullptr for first layer)
     };
 
     // Store nodes in a vector of vectors (one vector per layer)
@@ -141,12 +133,7 @@ MatchResult match_trajectory(
                 }
             }
 
-            next_layer.push_back({
-                layer + 1,
-                static_cast<int>(j),
-                best_prob,
-                best_prev
-            });
+            next_layer.push_back({layer + 1, static_cast<int>(j), best_prob, best_prev});
         }
     }
 
@@ -154,7 +141,7 @@ MatchResult match_trajectory(
     TGNode* best_node = nullptr;
     double best_final_prob = -std::numeric_limits<double>::infinity();
 
-    for (auto& node : layers[N-1]) {
+    for (auto& node : layers[N - 1]) {
         if (node.cum_prob > best_final_prob) {
             best_final_prob = node.cum_prob;
             best_node = &node;
@@ -177,8 +164,7 @@ MatchResult match_trajectory(
     while (node) {
         const auto& cand = candidates[node->layer][node->candidate_idx];
         path.push_back({
-            cand.edge_id,
-            cand.offset,
+            cand.edge_id, cand.offset,
             std::exp(node->cum_prob)  // Convert log prob back to probability
         });
         node = node->prev;
@@ -200,4 +186,5 @@ MatchResult match_trajectory(
     return result;
 }
 
-}}  // namespace cubao::fmm
+}  // namespace fmm
+}  // namespace cubao

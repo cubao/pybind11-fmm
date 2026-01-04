@@ -1,4 +1,5 @@
 #include "network.hpp"
+
 #include <algorithm>
 
 namespace cubao {
@@ -14,13 +15,11 @@ void Network::build_spatial_index() const {
 
     for (const auto& [edge_id, polyline] : geometries) {
         const auto& bbox = polyline.bbox();
-        FlatGeobuf::NodeItem item{
-            bbox[0],  // minX
-            bbox[1],  // minY
-            bbox[2],  // maxX
-            bbox[3],  // maxY
-            static_cast<uint64_t>(node_items.size())
-        };
+        FlatGeobuf::NodeItem item{bbox[0],  // minX
+                                  bbox[1],  // minY
+                                  bbox[2],  // maxX
+                                  bbox[3],  // maxY
+                                  static_cast<uint64_t>(node_items.size())};
         node_items.push_back(item);
         edge_ids.push_back(edge_id);
     }
@@ -40,9 +39,7 @@ void Network::build_spatial_index() const {
     const_cast<std::vector<int64_t>&>(edge_ids_).swap(edge_ids);
 }
 
-std::vector<ProjectedPoint> Network::query_radius(
-    const Eigen::Vector2d& pt, double radius) const {
-
+std::vector<ProjectedPoint> Network::query_radius(const Eigen::Vector2d& pt, double radius) const {
     // Lazy build spatial index
     build_spatial_index();
 
@@ -75,20 +72,14 @@ std::vector<ProjectedPoint> Network::query_radius(
             // Calculate offset along polyline
             double offset = polyline.offset(seg_idx, t);
 
-            projected_points.push_back({
-                edge_id,
-                offset,
-                dist,
-                proj_pt
-            });
+            projected_points.push_back({edge_id, offset, dist, proj_pt});
         }
     }
 
     return projected_points;
 }
 
-Path Network::shortest_path(int64_t from_edge, double from_offset,
-                            int64_t to_edge, double to_offset) const {
+Path Network::shortest_path(int64_t from_edge, double from_offset, int64_t to_edge, double to_offset) const {
     // TODO: Implement shortest path with edge offsets
     // This requires:
     // 1. Find nodes at from_edge and to_edge

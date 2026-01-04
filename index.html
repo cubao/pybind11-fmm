@@ -10,7 +10,8 @@
         <link rel="stylesheet" href="https://unpkg.com/@mdi/font@latest/css/materialdesignicons.min.css" />
         <link rel="stylesheet" href="https://fonts.bunny.net/css?family=roboto:400,500,700" />
         <style>
-            html, body {
+            html,
+            body {
                 height: 100%;
                 width: 100%;
                 margin: 0;
@@ -36,7 +37,7 @@
                 <v-btn
                     icon="mdi-cog"
                     color="primary"
-                    style="position: fixed; top: 16px; left: 16px; z-index: 1000; opacity: 0.7;"
+                    style="position: fixed; top: 16px; left: 16px; z-index: 1000; opacity: 0.7"
                     @click="drawer = !drawer"
                     elevation="2"
                     size="small"
@@ -101,7 +102,9 @@
                                     <v-card variant="outlined">
                                         <v-card-subtitle>匹配结果</v-card-subtitle>
                                         <v-card-text>
-                                            <div><strong>匹配路径:</strong> {{ matchResult.matched_path.join(' → ') }}</div>
+                                            <div>
+                                                <strong>匹配路径:</strong> {{ matchResult.matched_path.join(' → ') }}
+                                            </div>
                                             <div><strong>得分:</strong> {{ matchResult.score.toFixed(4) }}</div>
                                         </v-card-text>
                                     </v-card>
@@ -135,9 +138,7 @@
                 </v-navigation-drawer>
 
                 <!-- 状态提示 -->
-                <v-snackbar v-model="snackbar" :timeout="3000" :color="snackbarColor">
-                    {{ snackbarText }}
-                </v-snackbar>
+                <v-snackbar v-model="snackbar" :timeout="3000" :color="snackbarColor"> {{ snackbarText }} </v-snackbar>
             </v-app>
         </div>
 
@@ -200,19 +201,25 @@
                             },
                             satellite: {
                                 type: 'raster',
-                                tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                                tiles: [
+                                    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                                ],
                                 tileSize: 256,
                                 maxzoom: 18,
                             },
                             gaode_normal: {
                                 type: 'raster',
-                                tiles: ['http://wprd01.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=7'],
+                                tiles: [
+                                    'http://wprd01.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=7',
+                                ],
                                 tileSize: 256,
                                 maxzoom: 18,
                             },
                             gaode_satellite: {
                                 type: 'raster',
-                                tiles: ['http://wprd01.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=6'],
+                                tiles: [
+                                    'http://wprd01.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=6',
+                                ],
                                 tileSize: 256,
                                 maxzoom: 18,
                             },
@@ -269,9 +276,9 @@
                                 type: 'Feature',
                                 geometry: {
                                     type: 'LineString',
-                                    coordinates: trajectory.value
-                                }
-                            }
+                                    coordinates: trajectory.value,
+                                },
+                            },
                         });
 
                         map.value.addLayer({
@@ -280,8 +287,8 @@
                             source: 'trajectory',
                             paint: {
                                 'line-color': '#ff0000',
-                                'line-width': 3
-                            }
+                                'line-width': 3,
+                            },
                         });
 
                         map.value.addLayer({
@@ -290,8 +297,8 @@
                             source: 'trajectory',
                             paint: {
                                 'circle-radius': 5,
-                                'circle-color': '#ff0000'
-                            }
+                                'circle-color': '#ff0000',
+                            },
                         });
                     };
 
@@ -307,7 +314,7 @@
 
                             map.value.addSource('road-network', {
                                 type: 'geojson',
-                                data: geojson
+                                data: geojson,
                             });
 
                             map.value.addLayer({
@@ -316,14 +323,16 @@
                                 source: 'road-network',
                                 paint: {
                                     'line-color': '#3388ff',
-                                    'line-width': 2
-                                }
+                                    'line-width': 2,
+                                },
                             });
 
                             // Fit bounds
-                            const coordinates = geojson.features.flatMap(f => f.geometry.coordinates);
-                            const bounds = coordinates.reduce((bounds, coord) => bounds.extend(coord),
-                                new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
+                            const coordinates = geojson.features.flatMap((f) => f.geometry.coordinates);
+                            const bounds = coordinates.reduce(
+                                (bounds, coord) => bounds.extend(coord),
+                                new maplibregl.LngLatBounds(coordinates[0], coordinates[0]),
+                            );
                             map.value.fitBounds(bounds, { padding: 50 });
 
                             showMessage('路网加载成功', 'success');
@@ -340,7 +349,7 @@
                         }
 
                         try {
-                            const trajStr = trajectory.value.map(p => p.join(',')).join(';');
+                            const trajStr = trajectory.value.map((p) => p.join(',')).join(';');
                             const url = `/fmm?road_network_id=${roadNetworkId.value}&trajectory=${trajStr}`;
 
                             const response = await fetch(url);
@@ -365,9 +374,9 @@
                                     type: 'Feature',
                                     geometry: {
                                         type: 'MultiLineString',
-                                        coordinates: result.matched_geometries
-                                    }
-                                }
+                                        coordinates: result.matched_geometries,
+                                    },
+                                },
                             });
 
                             map.value.addLayer({
@@ -377,8 +386,8 @@
                                 paint: {
                                     'line-color': '#00ff00',
                                     'line-width': 5,
-                                    'line-opacity': 0.7
-                                }
+                                    'line-opacity': 0.7,
+                                },
                             });
 
                             showMessage('匹配成功', 'success');
@@ -427,12 +436,15 @@
 
                         const sources = initMapSources();
                         map.value.addSource('base-source', sources[basemap.value]);
-                        map.value.addLayer({
-                            id: 'base-layer',
-                            type: 'raster',
-                            source: 'base-source',
-                            paint: { 'raster-opacity': basemapOpacity.value },
-                        }, 'road-network'); // Insert below road network
+                        map.value.addLayer(
+                            {
+                                id: 'base-layer',
+                                type: 'raster',
+                                source: 'base-source',
+                                paint: { 'raster-opacity': basemapOpacity.value },
+                            },
+                            'road-network',
+                        ); // Insert below road network
                     };
 
                     watch(basemap, () => {

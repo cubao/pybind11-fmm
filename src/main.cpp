@@ -1,7 +1,7 @@
+#include <pybind11/eigen.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
-#include <pybind11/eigen.h>
 
 #include <Eigen/Core>
 
@@ -14,8 +14,8 @@
 #include <vector>
 
 #include "dbg.h"
-#include "network.hpp"
 #include "fmm/fmm.hpp"
+#include "network.hpp"
 
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
@@ -51,14 +51,11 @@ PYBIND11_MODULE(_core, m) {
     // Network
     py::class_<Network>(m, "Network")
         .def(py::init<>())
-        .def("add_edge", &Network::add_edge,
-             py::arg("edge_id"), py::arg("coords"), py::arg("is_wgs84") = true,
+        .def("add_edge", &Network::add_edge, py::arg("edge_id"), py::arg("coords"), py::arg("is_wgs84") = true,
              "Add an edge to the network")
-        .def("geometry", &Network::geometry, py::arg("edge_id"),
-             py::return_value_policy::reference_internal,
+        .def("geometry", &Network::geometry, py::arg("edge_id"), py::return_value_policy::reference_internal,
              "Get the geometry of an edge")
-        .def("query_radius", &Network::query_radius,
-             py::arg("pt"), py::arg("radius"),
+        .def("query_radius", &Network::query_radius, py::arg("pt"), py::arg("radius"),
              "Query edges within radius of a point");
 
     // FMM submodule
@@ -94,13 +91,11 @@ PYBIND11_MODULE(_core, m) {
         .def_readwrite("success", &fmm::MatchResult::success);
 
     // FMM functions
-    fmm.def("search_candidates", &fmm::search_candidates,
-            py::arg("network"), py::arg("trajectory"), py::arg("config"),
+    fmm.def("search_candidates", &fmm::search_candidates, py::arg("network"), py::arg("trajectory"), py::arg("config"),
             "Search for candidate road segments for each GPS point");
 
-    fmm.def("match_trajectory", &fmm::match_trajectory,
-            py::arg("network"), py::arg("trajectory"), py::arg("candidates"), py::arg("config"),
-            "Match GPS trajectory to road network using HMM");
+    fmm.def("match_trajectory", &fmm::match_trajectory, py::arg("network"), py::arg("trajectory"),
+            py::arg("candidates"), py::arg("config"), "Match GPS trajectory to road network using HMM");
 
 #ifdef VERSION_INFO
     m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
