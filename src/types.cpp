@@ -236,4 +236,28 @@ const Polyline::Cache &Polyline::cache() const {
     return *cache_;
 }
 
+const Eigen::Vector4d &Polyline::bbox() const {
+    if (bbox_) {
+        return *bbox_;
+    }
+
+    // Calculate bounding box (minX, minY, maxX, maxY)
+    double minX = std::numeric_limits<double>::infinity();
+    double minY = std::numeric_limits<double>::infinity();
+    double maxX = -std::numeric_limits<double>::infinity();
+    double maxY = -std::numeric_limits<double>::infinity();
+
+    for (int i = 0; i < N_; ++i) {
+        double x = coords_(i, 0);
+        double y = coords_(i, 1);
+        minX = std::min(minX, x);
+        minY = std::min(minY, y);
+        maxX = std::max(maxX, x);
+        maxY = std::max(maxY, y);
+    }
+
+    bbox_ = Eigen::Vector4d(minX, minY, maxX, maxY);
+    return *bbox_;
+}
+
 }  // namespace cubao

@@ -4,7 +4,7 @@
         <meta charset="utf-8" />
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Map Viewer</title>
+        <title>FMM Visualization</title>
         <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.3.0/dist/maplibre-gl.css" />
         <link rel="stylesheet" href="https://unpkg.com/vuetify@3.8.0/dist/vuetify.min.css" />
         <link rel="stylesheet" href="https://unpkg.com/@mdi/font@latest/css/materialdesignicons.min.css" />
@@ -33,29 +33,20 @@
         <div id="map"></div>
         <div id="app">
             <v-app>
-                <!-- 悬浮设置按钮 -->
+                <!-- 设置面板 -->
                 <v-btn
                     icon="mdi-cog"
                     color="primary"
-                    style="
-                        position: fixed;
-                        top: 16px;
-                        left: 16px;
-                        z-index: 1000;
-                        opacity: 0.4;
-                        transition: opacity 0.2s;
-                    "
+                    style="position: fixed; top: 16px; left: 16px; z-index: 1000; opacity: 0.7"
                     @click="drawer = !drawer"
                     elevation="2"
                     size="small"
-                    @mouseenter="$event.target.style.opacity = '1'"
-                    @mouseleave="$event.target.style.opacity = '0.4'"
                 ></v-btn>
 
-                <v-navigation-drawer v-model="drawer" location="left" :width="300" temporary :floating="true">
+                <v-navigation-drawer v-model="drawer" location="left" :width="350" temporary>
                     <v-card>
                         <v-card-title class="text-h6 pa-4">
-                            设置
+                            FMM 可视化工具
                             <v-btn
                                 icon="mdi-close"
                                 variant="text"
@@ -68,10 +59,64 @@
                         <v-card-text>
                             <v-list>
                                 <v-list-item class="pa-0 mb-2">
+                                    <v-text-field
+                                        v-model="roadNetworkId"
+                                        label="路网 ID"
+                                        hide-details
+                                        density="compact"
+                                    ></v-text-field>
+                                </v-list-item>
+
+                                <v-list-item class="pa-0 mb-2">
+                                    <v-btn @click="loadRoadNetwork" block color="primary">加载路网</v-btn>
+                                </v-list-item>
+
+                                <v-divider class="my-4"></v-divider>
+
+                                <v-list-item class="pa-0 mb-2">
+                                    <v-switch
+                                        v-model="isDrawing"
+                                        label="绘制模式"
+                                        color="primary"
+                                        hide-details
+                                    ></v-switch>
+                                </v-list-item>
+
+                                <v-list-item class="pa-0 mb-2">
+                                    <v-btn @click="matchTrajectory" block :disabled="trajectory.length < 2">
+                                        执行匹配
+                                    </v-btn>
+                                </v-list-item>
+
+                                <v-list-item class="pa-0 mb-2">
+                                    <v-btn @click="clearTrajectory" block variant="outlined">清除轨迹</v-btn>
+                                </v-list-item>
+
+                                <v-list-item class="pa-0 mb-2">
+                                    <v-btn @click="clearAll" block variant="outlined" color="error">清除全部</v-btn>
+                                </v-list-item>
+
+                                <v-divider class="my-4"></v-divider>
+
+                                <v-list-item class="pa-0 mb-2" v-if="matchResult">
+                                    <v-card variant="outlined">
+                                        <v-card-subtitle>匹配结果</v-card-subtitle>
+                                        <v-card-text>
+                                            <div>
+                                                <strong>匹配路径:</strong> {{ matchResult.matched_path.join(' → ') }}
+                                            </div>
+                                            <div><strong>得分:</strong> {{ matchResult.score.toFixed(4) }}</div>
+                                        </v-card-text>
+                                    </v-card>
+                                </v-list-item>
+
+                                <v-divider class="my-4"></v-divider>
+
+                                <v-list-item class="pa-0 mb-2">
                                     <v-select
                                         v-model="basemap"
                                         :items="basemapOptions"
-                                        label="底图选择"
+                                        label="底图"
                                         density="compact"
                                         hide-details
                                     ></v-select>
@@ -85,36 +130,15 @@
                                         max="1"
                                         step="0.01"
                                         hide-details
-                                        color="primary"
                                     ></v-slider>
-                                </v-list-item>
-
-                                <v-list-item class="pa-0 mb-2">
-                                    <v-text-field
-                                        v-model="centerInput"
-                                        label="中心坐标 (lon,lat)"
-                                        hide-details
-                                        @change="updateCenter"
-                                    ></v-text-field>
-                                </v-list-item>
-
-                                <v-list-item class="pa-0">
-                                    <v-text-field
-                                        v-model="zoom"
-                                        label="缩放级别"
-                                        type="number"
-                                        min="2"
-                                        max="24"
-                                        step="0.1"
-                                        hide-details
-                                    ></v-text-field>
                                 </v-list-item>
                             </v-list>
                         </v-card-text>
                     </v-card>
                 </v-navigation-drawer>
 
-                <v-main> </v-main>
+                <!-- 状态提示 -->
+                <v-snackbar v-model="snackbar" :timeout="3000" :color="snackbarColor"> {{ snackbarText }} </v-snackbar>
             </v-app>
         </div>
 
@@ -124,8 +148,7 @@
                 "imports": {
                     "vue": "https://unpkg.com/vue@3.5.17/dist/vue.esm-browser.js",
                     "vuetify": "https://unpkg.com/vuetify@3.8.0/dist/vuetify.esm.js",
-                    "@vueuse/core": "https://unpkg.com/@vueuse/core@13.3.0/index.mjs",
-                    "@vueuse/shared": "https://unpkg.com/@vueuse/shared@13.3.0/index.mjs"
+                    "@vueuse/core": "https://unpkg.com/@vueuse/core@13.3.0/index.mjs"
                 }
             }
         </script>
@@ -140,15 +163,26 @@
             createApp({
                 setup() {
                     const map = shallowRef(null);
-                    const mapSources = ref({});
                     const drawer = ref(false);
 
+                    // Road network
+                    const roadNetworkId = ref(params.network || 'test_network');
+
+                    // Drawing
+                    const isDrawing = ref(true);
+                    const trajectory = ref([]);
+
+                    // Match result
+                    const matchResult = ref(null);
+
+                    // UI state
+                    const snackbar = ref(false);
+                    const snackbarText = ref('');
+                    const snackbarColor = ref('info');
+
+                    // Basemap
                     const basemap = ref(params.basemap || 'gaode_normal');
                     const basemapOpacity = ref(parseFloat(params.basemap_opacity || '1.0'));
-                    const centerLon = ref(parseFloat(params.lon || '116.419181'));
-                    const centerLat = ref(parseFloat(params.lat || '39.901624'));
-                    const zoom = ref(parseFloat(params.zoom || '10'));
-                    const centerInput = ref(`${centerLon.value},${centerLat.value}`);
 
                     const basemapOptions = [
                         { title: '高德标准', value: 'gaode_normal' },
@@ -161,14 +195,9 @@
                         return {
                             osm: {
                                 type: 'raster',
-                                tiles: [
-                                    'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                    'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                    'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                ],
+                                tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
                                 tileSize: 256,
                                 maxzoom: 18,
-                                attribution: '© OpenStreetMap contributors',
                             },
                             satellite: {
                                 type: 'raster',
@@ -177,159 +206,277 @@
                                 ],
                                 tileSize: 256,
                                 maxzoom: 18,
-                                attribution: 'Tiles © Esri',
                             },
                             gaode_normal: {
                                 type: 'raster',
                                 tiles: [
                                     'http://wprd01.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=7',
-                                    'http://wprd02.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=7',
-                                    'http://wprd03.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=7',
-                                    'http://wprd04.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=7',
                                 ],
                                 tileSize: 256,
                                 maxzoom: 18,
-                                attribution: '© 高德/Gaode',
                             },
                             gaode_satellite: {
                                 type: 'raster',
                                 tiles: [
                                     'http://wprd01.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=6',
-                                    'http://wprd02.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=6',
-                                    'http://wprd03.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=6',
-                                    'http://wprd04.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=6',
                                 ],
                                 tileSize: 256,
                                 maxzoom: 18,
-                                attribution: '© Gaode/AutoNavi',
                             },
                         };
+                    };
+
+                    const showMessage = (text, color = 'info') => {
+                        snackbarText.value = text;
+                        snackbarColor.value = color;
+                        snackbar.value = true;
                     };
 
                     const initMap = () => {
-                        const emptyStyle = {
-                            version: 8,
-                            sources: {},
-                            layers: [],
-                        };
-
                         map.value = new maplibregl.Map({
                             container: 'map',
-                            style: emptyStyle,
-                            center: [centerLon.value, centerLat.value],
-                            zoom: zoom.value,
-                            bearing: parseFloat(params.bearing || '0.0'),
+                            style: { version: 8, sources: {}, layers: [] },
+                            center: [116.419181, 39.901624],
+                            zoom: 10,
                             maplibreLogo: false,
-                            minZoom: 2,
-                            maxZoom: 24,
-                            // disable interaction
-                            pitchWithRotate: false,
-                            rollEnabled: false,
-                            touchPitch: false,
-                            // touchZoomRotate: false,
-                            attributionControl: false,
                         });
 
                         map.value.on('load', () => {
-                            mapSources.value = initMapSources();
-                            updateBasemap();
+                            const sources = initMapSources();
+                            map.value.addSource('base-source', sources[basemap.value]);
+                            map.value.addLayer({
+                                id: 'base-layer',
+                                type: 'raster',
+                                source: 'base-source',
+                                paint: { 'raster-opacity': basemapOpacity.value },
+                            });
                         });
 
-                        map.value.on('moveend', () => {
-                            const center = map.value.getCenter();
-                            centerLon.value = parseFloat(center.lng.toFixed(6));
-                            centerLat.value = parseFloat(center.lat.toFixed(6));
-                            zoom.value = parseFloat(map.value.getZoom().toFixed(2));
-                            centerInput.value = `${centerLon.value},${centerLat.value}`;
+                        map.value.on('click', (e) => {
+                            if (!isDrawing.value) return;
 
-                            params.lon = centerLon.value.toString();
-                            params.lat = centerLat.value.toString();
-                            params.zoom = zoom.value.toString();
-                            const bearing = map.value.getBearing();
-                            if (bearing != 0.0) {
-                                params.bearing = bearing.toFixed(2);
-                            } else {
-                                delete params.bearing;
-                            }
+                            trajectory.value.push([e.lngLat.lng, e.lngLat.lat]);
+                            updateTrajectoryLayer();
+                            showMessage(`添加点 ${trajectory.value.length}`, 'success');
                         });
                     };
 
-                    const updateBasemap = () => {
-                        if (!map.value || !mapSources.value[basemap.value]) return;
-
-                        if (map.value.getLayer('base-layer')) {
-                            map.value.removeLayer('base-layer');
-                        }
-                        if (map.value.getSource('base-source')) {
-                            map.value.removeSource('base-source');
+                    const updateTrajectoryLayer = () => {
+                        if (map.value.getSource('trajectory')) {
+                            map.value.removeLayer('trajectory-line');
+                            map.value.removeLayer('trajectory-points');
+                            map.value.removeSource('trajectory');
                         }
 
-                        map.value.addSource('base-source', mapSources.value[basemap.value]);
+                        if (trajectory.value.length === 0) return;
+
+                        map.value.addSource('trajectory', {
+                            type: 'geojson',
+                            data: {
+                                type: 'Feature',
+                                geometry: {
+                                    type: 'LineString',
+                                    coordinates: trajectory.value,
+                                },
+                            },
+                        });
+
                         map.value.addLayer({
-                            id: 'base-layer',
-                            type: 'raster',
-                            source: 'base-source',
+                            id: 'trajectory-line',
+                            type: 'line',
+                            source: 'trajectory',
                             paint: {
-                                'raster-opacity': basemapOpacity.value,
+                                'line-color': '#ff0000',
+                                'line-width': 3,
+                            },
+                        });
+
+                        map.value.addLayer({
+                            id: 'trajectory-points',
+                            type: 'circle',
+                            source: 'trajectory',
+                            paint: {
+                                'circle-radius': 5,
+                                'circle-color': '#ff0000',
                             },
                         });
                     };
 
-                    const updateCenter = () => {
-                        const coords = centerInput.value.split(',').map((s) => parseFloat(s.trim()));
-                        if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
-                            centerLon.value = coords[0];
-                            centerLat.value = coords[1];
-                            if (map.value) {
-                                map.value.jumpTo({
-                                    center: [centerLon.value, centerLat.value],
-                                });
+                    const loadRoadNetwork = async () => {
+                        try {
+                            const response = await fetch(`${roadNetworkId.value}.geojson`);
+                            const geojson = await response.json();
+
+                            if (map.value.getSource('road-network')) {
+                                map.value.removeLayer('road-network');
+                                map.value.removeSource('road-network');
                             }
+
+                            map.value.addSource('road-network', {
+                                type: 'geojson',
+                                data: geojson,
+                            });
+
+                            map.value.addLayer({
+                                id: 'road-network',
+                                type: 'line',
+                                source: 'road-network',
+                                paint: {
+                                    'line-color': '#3388ff',
+                                    'line-width': 2,
+                                },
+                            });
+
+                            // Fit bounds
+                            const coordinates = geojson.features.flatMap((f) => f.geometry.coordinates);
+                            const bounds = coordinates.reduce(
+                                (bounds, coord) => bounds.extend(coord),
+                                new maplibregl.LngLatBounds(coordinates[0], coordinates[0]),
+                            );
+                            map.value.fitBounds(bounds, { padding: 50 });
+
+                            showMessage('路网加载成功', 'success');
+                        } catch (error) {
+                            console.error(error);
+                            showMessage('路网加载失败: ' + error.message, 'error');
                         }
                     };
 
-                    watch(basemap, updateBasemap);
+                    const matchTrajectory = async () => {
+                        if (trajectory.value.length < 2) {
+                            showMessage('至少需要2个点', 'warning');
+                            return;
+                        }
+
+                        try {
+                            const trajStr = trajectory.value.map((p) => p.join(',')).join(';');
+                            const url = `/fmm?road_network_id=${roadNetworkId.value}&trajectory=${trajStr}`;
+
+                            const response = await fetch(url);
+                            const result = await response.json();
+
+                            if (result.error) {
+                                throw new Error(result.error);
+                            }
+
+                            matchResult.value = result;
+
+                            // Clear previous matched path
+                            if (map.value.getSource('matched-path')) {
+                                map.value.removeLayer('matched-path');
+                                map.value.removeSource('matched-path');
+                            }
+
+                            // Add matched path
+                            map.value.addSource('matched-path', {
+                                type: 'geojson',
+                                data: {
+                                    type: 'Feature',
+                                    geometry: {
+                                        type: 'MultiLineString',
+                                        coordinates: result.matched_geometries,
+                                    },
+                                },
+                            });
+
+                            map.value.addLayer({
+                                id: 'matched-path',
+                                type: 'line',
+                                source: 'matched-path',
+                                paint: {
+                                    'line-color': '#00ff00',
+                                    'line-width': 5,
+                                    'line-opacity': 0.7,
+                                },
+                            });
+
+                            showMessage('匹配成功', 'success');
+                        } catch (error) {
+                            console.error(error);
+                            showMessage('匹配失败: ' + error.message, 'error');
+                        }
+                    };
+
+                    const clearTrajectory = () => {
+                        trajectory.value = [];
+                        matchResult.value = null;
+
+                        if (map.value.getSource('trajectory')) {
+                            map.value.removeLayer('trajectory-line');
+                            map.value.removeLayer('trajectory-points');
+                            map.value.removeSource('trajectory');
+                        }
+
+                        if (map.value.getSource('matched-path')) {
+                            map.value.removeLayer('matched-path');
+                            map.value.removeSource('matched-path');
+                        }
+
+                        showMessage('已清除轨迹', 'info');
+                    };
+
+                    const clearAll = () => {
+                        clearTrajectory();
+
+                        if (map.value.getSource('road-network')) {
+                            map.value.removeLayer('road-network');
+                            map.value.removeSource('road-network');
+                        }
+
+                        showMessage('已清除全部', 'info');
+                    };
+
+                    const updateBasemap = () => {
+                        if (!map.value) return;
+
+                        if (map.value.getLayer('base-layer')) {
+                            map.value.removeLayer('base-layer');
+                            map.value.removeSource('base-source');
+                        }
+
+                        const sources = initMapSources();
+                        map.value.addSource('base-source', sources[basemap.value]);
+                        map.value.addLayer(
+                            {
+                                id: 'base-layer',
+                                type: 'raster',
+                                source: 'base-source',
+                                paint: { 'raster-opacity': basemapOpacity.value },
+                            },
+                            'road-network',
+                        ); // Insert below road network
+                    };
+
+                    watch(basemap, () => {
+                        updateBasemap();
+                        params.basemap = basemap.value;
+                    });
+
                     watch(basemapOpacity, (newOpacity) => {
                         if (map.value && map.value.getLayer('base-layer')) {
                             map.value.setPaintProperty('base-layer', 'raster-opacity', newOpacity);
                         }
-                        if (newOpacity == 1.0) {
-                            delete params.basemap_opacity;
-                        } else {
-                            params.basemap_opacity = newOpacity.toString();
-                        }
-                    });
-
-                    watch([centerLon, centerLat], ([lon, lat]) => {
-                        centerInput.value = `${lon},${lat}`;
-                        if (map.value) {
-                            map.value.jumpTo({
-                                center: [lon, lat],
-                            });
-                        }
-                    });
-
-                    watch(zoom, (newZoom) => {
-                        if (map.value) {
-                            map.value.jumpTo({ zoom: newZoom });
-                        }
-                        params.zoom = newZoom.toString();
-                    });
-
-                    watch(basemap, (newBasemap) => {
-                        params.basemap = newBasemap;
+                        params.basemap_opacity = newOpacity.toString();
                     });
 
                     initMap();
 
                     return {
                         drawer,
+                        roadNetworkId,
+                        isDrawing,
+                        trajectory,
+                        matchResult,
                         basemap,
                         basemapOpacity,
-                        centerInput,
-                        zoom,
                         basemapOptions,
-                        updateCenter,
+                        snackbar,
+                        snackbarText,
+                        snackbarColor,
+                        loadRoadNetwork,
+                        matchTrajectory,
+                        clearTrajectory,
+                        clearAll,
                     };
                 },
             })

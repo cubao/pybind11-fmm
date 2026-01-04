@@ -22,7 +22,7 @@ force_clean:
 
 pytest:
 	python3 -m pip install pytest
-	pytest -rP tests # --capture=tee-sys
+	python3 -m pytest -rP tests # --capture=tee-sys
 .PHONY: test pytest
 
 DOCKER_TAG_WINDOWS ?= ghcr.io/cubao/build-env-windows-x64:v0.0.1
@@ -98,3 +98,9 @@ echo-%  : ; @echo -n $($*)
 Echo-%  : ; @echo $($*)
 ECHO-%  : ; @echo $* = $($*)
 echo-Tab: ; @echo -n '    '
+
+restub:
+	$(PYTHON) -m pip install pybind11-stubgen
+	python3 -m pybind11_stubgen pybind11_fmm._core -o src
+	@echo "✓ Generated stub files in src/pybind11_fmm/_core/"
+.PHONY: restub
