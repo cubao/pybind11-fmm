@@ -4,7 +4,7 @@ High-performance Fast Map Matching (FMM) algorithm implementation in C++ with Py
 
 ## Overview
 
-`pybind11-fmm` provides a fast and efficient implementation of the Fast Map Matching algorithm for matching GPS trajectories to road networks. The core algorithm is implemented in C++ for maximum performance, with a convenient Python API that maintains compatibility with the `topo-graph` interface.
+`pybind11-fmm` provides a fast and efficient implementation of the Fast Map Matching algorithm for matching GPS trajectories to road networks. The core algorithm is implemented in C++ for maximum performance, with a convenient Python API that maintains compatibility with the `topo-graph` (python implementation) interface.
 
 ### Key Features
 

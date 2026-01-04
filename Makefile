@@ -98,3 +98,9 @@ echo-%  : ; @echo -n $($*)
 Echo-%  : ; @echo $($*)
 ECHO-%  : ; @echo $* = $($*)
 echo-Tab: ; @echo -n '    '
+
+restub:
+	$(PYTHON) -m pip install pybind11-stubgen
+	pybind11-stubgen pybind11_fmm._core -o stubs/pybind11-fmm-stubs
+	@cp stubs/pybind11-fmm-stubs/pybind11_fmm/_core.pyi src/pybind11_fmm/_core.pyi || echo "Stub file for _core not generated"
+.PHONY: restub
