@@ -66,4 +66,4 @@ class ProjectedPoint:
         self,
     ) -> typing.Annotated[numpy.typing.NDArray[numpy.float64], "[2, 1]"]: ...
 
-__version__: str = "0.0.1"
+__version__: str = "0.0.2"
