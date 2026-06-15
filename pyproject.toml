@@ -32,7 +32,8 @@ test = ["pytest"]
 
 # docs: https://scikit-build-core.readthedocs.io/en/latest/configuration.html
 [tool.scikit-build]
-wheel.expand-macos-universal-tags = true
+# Build stable ABI wheels for CPython 3.12+ (matches STABLE_ABI in CMakeLists.txt)
+wheel.py-api = "cp312"
 # cmake.build-type = "Debug"
 # build-dir = "build/{wheel_tag}"
 
@@ -51,10 +52,17 @@ testpaths = ["tests"]
 
 
 [tool.cibuildwheel]
+build-verbosity = 1
+# nanobind needs CPython; skip PyPy, musllinux and 32-bit builds
+skip = "pp* *musllinux* *_i686"
 test-command = "pytest {project}/tests"
 test-extras = ["test"]
-test-skip = ["*universal2:arm64"]
-build-verbosity = 1
+# Don't test Python 3.8 wheels on macOS/arm64
+test-skip = "cp38-macosx_*:arm64"
+
+# Needed for full C++17 support
+[tool.cibuildwheel.macos.environment]
+MACOSX_DEPLOYMENT_TARGET = "10.14"
 
 
 [tool.ruff]

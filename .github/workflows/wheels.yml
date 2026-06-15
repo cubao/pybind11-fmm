@@ -5,24 +5,17 @@ on:
   pull_request:
   push:
     branches:
-     - master
+     - main
   release:
     types:
       - published
-
-env:
-  FORCE_COLOR: 3
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   build_sdist:
     name: Build SDist
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         submodules: true
 
@@ -32,9 +25,9 @@ jobs:
     - name: Check metadata
       run: pipx run twine check dist/*
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v5
       with:
-        name: cibw-sdist
+        name: dist-sdist
         path: dist/*.tar.gz
 
 
@@ -44,52 +37,40 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-15-intel, macos-latest, windows-latest]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         submodules: true
 
-    - uses: pypa/cibuildwheel@v2.17
-      env:
-        CIBW_ARCHS_MACOS: universal2
-        CIBW_ARCHS_WINDOWS: auto ARM64
-        CIBW_SKIP: "pp* *musllinux* *_i686"
-        CIBW_TEST_SKIP: "*macosx* *win* *aarch64 cp31* pp* *musllinux*"
-        CIBW_ENVIRONMENT: "PIP_ONLY_BINARY=:all:"
-        CIBW_BEFORE_BUILD: "pip install --prefer-binary numpy pytest"
+    - uses: pypa/cibuildwheel@v3.2
 
     - name: Verify clean directory
       run: git diff --exit-code
       shell: bash
 
-    - uses: actions/upload-artifact@v4
+    - name: Upload wheels
+      uses: actions/upload-artifact@v5
       with:
-        name: cibw-wheels-${{ matrix.os }}
         path: wheelhouse/*.whl
-
+        name: dist-${{ matrix.os }}
 
   upload_all:
     name: Upload if release
     needs: [build_wheels, build_sdist]
     runs-on: ubuntu-latest
     if: github.event_name == 'release' && github.event.action == 'published'
-    environment: pypi
-    permissions:
-      id-token: write
 
     steps:
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v6
+    - uses: actions/download-artifact@v6
       with:
-        python-version: "3.x"
-
-    - uses: actions/download-artifact@v4
-      with:
-        pattern: cibw-*
-        merge-multiple: true
         path: dist
+        pattern: dist-*
+        merge-multiple: true
 
     - uses: pypa/gh-action-pypi-publish@release/v1
       with:
+        user: __token__
         password: ${{ secrets.pypi_password }}
