@@ -52,8 +52,10 @@ testpaths = ["tests"]
 
 [tool.cibuildwheel]
 build-verbosity = 1
-# nanobind needs CPython; skip PyPy, musllinux and 32-bit builds
-skip = "pp* *musllinux* *_i686"
+# nanobind needs CPython; skip PyPy, musllinux and 32-bit builds.
+# Skip free-threaded builds (cp3*t): incompatible with the stable ABI and not
+# opted into via nanobind's FREE_THREADED mode.
+skip = "pp* *musllinux* *_i686 cp3*t-*"
 test-command = "pytest {project}/tests"
 test-extras = ["test"]
 
