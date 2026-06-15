@@ -38,4 +38,28 @@ target_include_directories(_core PRIVATE src/3rdparty)
 
 target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
+# Generate typed stubs (.pyi) and the py.typed marker so editors and static type
+# checkers (mypy, pyright, VS Code) understand the compiled module. The
+# RECURSIVE flag also emits a stub for the embedded `_core.fmm` submodule.
+nanobind_add_stub(
+  _core_stub
+  MODULE
+  _core
+  PYTHON_PATH
+  $<TARGET_FILE_DIR:_core>
+  DEPENDS
+  _core
+  MARKER_FILE
+  py.typed
+  RECURSIVE
+  OUTPUT_PATH
+  ${CMAKE_CURRENT_BINARY_DIR}
+  OUTPUT
+  _core/__init__.pyi
+  _core/fmm.pyi)
+
 install(TARGETS _core DESTINATION pybind11_fmm)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/py.typed DESTINATION pybind11_fmm)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/_core/__init__.pyi
+              ${CMAKE_CURRENT_BINARY_DIR}/_core/fmm.pyi
+        DESTINATION pybind11_fmm/_core)

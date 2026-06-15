@@ -5,7 +5,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "pybind11_fmm"
-version = "0.0.3"
+version = "0.0.4"
 description="fmm with python binding"
 readme = "README.md"
 authors = [
