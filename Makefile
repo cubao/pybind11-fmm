@@ -55,7 +55,7 @@ python_install:
 python_wheel:
 	$(PYTHON) -m pip wheel . -w build --verbose
 python_sdist:
-	$(PYTHON) -m pip sdist . --verbose
+	$(PYTHON) -m pipx run build --sdist
 python_test: pytest
 .PHONY: build
 
@@ -98,9 +98,3 @@ echo-%  : ; @echo -n $($*)
 Echo-%  : ; @echo $($*)
 ECHO-%  : ; @echo $* = $($*)
 echo-Tab: ; @echo -n '    '
-
-restub:
-	$(PYTHON) -m pip install pybind11-stubgen
-	python3 -m pybind11_stubgen pybind11_fmm._core -o src
-	@echo "✓ Generated stub files in src/pybind11_fmm/_core/"
-.PHONY: restub
