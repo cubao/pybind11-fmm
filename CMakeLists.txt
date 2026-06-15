@@ -26,8 +26,10 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 endif()
 
-find_package(Python REQUIRED COMPONENTS Interpreter Development.Module
-             OPTIONAL_COMPONENTS Development.SABIModule)
+find_package(
+  Python REQUIRED
+  COMPONENTS Interpreter Development.Module
+  OPTIONAL_COMPONENTS Development.SABIModule)
 find_package(nanobind CONFIG REQUIRED)
 
 file(GLOB SRCS src/*.cpp src/fmm/*.cpp)
