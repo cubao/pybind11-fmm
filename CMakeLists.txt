@@ -26,12 +26,14 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 endif()
 
-find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
-find_package(pybind11 CONFIG REQUIRED)
+find_package(
+  Python REQUIRED
+  COMPONENTS Interpreter Development.Module
+  OPTIONAL_COMPONENTS Development.SABIModule)
+find_package(nanobind CONFIG REQUIRED)
 
 file(GLOB SRCS src/*.cpp src/fmm/*.cpp)
-python_add_library(_core MODULE ${SRCS} WITH_SOABI)
-target_link_libraries(_core PRIVATE pybind11::headers)
+nanobind_add_module(_core STABLE_ABI NB_STATIC ${SRCS})
 target_include_directories(_core PRIVATE src/3rdparty)
 
 target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})

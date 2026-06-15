@@ -1,11 +1,11 @@
-name: "Pip"
+name: Pip
 
 on:
   workflow_dispatch:
   pull_request:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   build:
@@ -15,17 +15,22 @@ jobs:
       fail-fast: false
       matrix:
         platform: [windows-latest, macos-latest, ubuntu-latest]
-        python-version: ["3.9", "3.11"]
+        python-version: ["3.9", "3.12"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
+
+    - name: Set min macOS version
+      if: runner.os == 'macOS'
+      run: |
+        echo "MACOSX_DEPLOYMENT_TARGET=10.14" >> $GITHUB_ENV
 
     - name: Build and install
       run: pip install --verbose .[test]
 
     - name: Test
-      run: pytest
+      run: python -m pytest

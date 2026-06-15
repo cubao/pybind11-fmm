@@ -1,11 +1,11 @@
 [build-system]
-requires = ["scikit-build-core>=0.3.3", "pybind11"]
+requires = ["scikit-build-core>=0.3.3", "nanobind"]
 build-backend = "scikit_build_core.build"
 
 
 [project]
 name = "pybind11_fmm"
-version = "0.0.2"
+version = "0.0.3"
 description="fmm with python binding"
 readme = "README.md"
 authors = [
@@ -14,13 +14,11 @@ authors = [
 dependencies = [
   "numpy",
 ]
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 classifiers = [
   "Development Status :: 4 - Beta",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.7",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
@@ -33,7 +31,8 @@ test = ["pytest"]
 
 # docs: https://scikit-build-core.readthedocs.io/en/latest/configuration.html
 [tool.scikit-build]
-wheel.expand-macos-universal-tags = true
+# Build stable ABI wheels for CPython 3.12+ (matches STABLE_ABI in CMakeLists.txt)
+wheel.py-api = "cp312"
 # cmake.build-type = "Debug"
 # build-dir = "build/{wheel_tag}"
 
@@ -52,10 +51,17 @@ testpaths = ["tests"]
 
 
 [tool.cibuildwheel]
+build-verbosity = 1
+# nanobind needs CPython; skip PyPy, musllinux and 32-bit builds.
+# Skip free-threaded builds (cp3*t): incompatible with the stable ABI and not
+# opted into via nanobind's FREE_THREADED mode.
+skip = "pp* *musllinux* *_i686 cp3*t-*"
 test-command = "pytest {project}/tests"
 test-extras = ["test"]
-test-skip = ["*universal2:arm64"]
-build-verbosity = 1
+
+# Needed for full C++17 support
+[tool.cibuildwheel.macos.environment]
+MACOSX_DEPLOYMENT_TARGET = "10.14"
 
 
 [tool.ruff]
